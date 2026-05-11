@@ -1,0 +1,124 @@
+import { parseISO, format } from "date-fns";
+import { useEffect, useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { api } from "../api";
+import { useUiStore } from "../store";
+
+type ProjectRes = { values: { key: string; name: string }[] };
+
+type FiltersBarProps = {
+  onApply?: () => void;
+  applyLabel?: string;
+  showDateFilters?: boolean;
+};
+
+export function FiltersBar({
+  onApply,
+  applyLabel = "Apply filters",
+  showDateFilters = true,
+}: FiltersBarProps) {
+  const { projectKeys, setProjectKeys, dateFrom, dateTo, setDateRange } = useUiStore();
+  const [projects, setProjects] = useState<{ key: string; name: string }[]>([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function loadProjects() {
+    if (projectsLoaded || projectsLoading) return;
+    setErr(null);
+    setProjectsLoading(true);
+    try {
+      const data = await api<ProjectRes>("/api/projects");
+      setProjects(data.values ?? []);
+      setProjectsLoaded(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Projects unavailable");
+    } finally {
+      setProjectsLoading(false);
+    }
+  }
+
+  function toggleProject(key: string) {
+    if (projectKeys.includes(key)) setProjectKeys(projectKeys.filter((k) => k !== key));
+    else setProjectKeys([...projectKeys, key]);
+  }
+
+  function parseDateOrNull(value: string) {
+    if (!value) return null;
+    const parsed = parseISO(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  }
+
+  function toIsoDateOrCurrent(value: Date | null, fallback: string) {
+    if (!value) return fallback;
+    return format(value, "yyyy-MM-dd");
+  }
+
+  useEffect(() => {
+    void loadProjects();
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 mb-6 space-y-3">
+      {showDateFilters && (
+        <div className="flex flex-wrap gap-4 items-end">
+          <label className="flex flex-col gap-1 text-xs text-slate-400">
+            From
+            <DatePicker
+              selected={parseDateOrNull(dateFrom)}
+              onChange={(date) => setDateRange(toIsoDateOrCurrent(date, dateFrom), dateTo)}
+              dateFormat="yyyy-MM-dd"
+              className="bg-slate-950 border border-slate-700 rounded-md px-2 py-1.5 text-slate-100"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-xs text-slate-400">
+            To
+            <DatePicker
+              selected={parseDateOrNull(dateTo)}
+              onChange={(date) => setDateRange(dateFrom, toIsoDateOrCurrent(date, dateTo))}
+              dateFormat="yyyy-MM-dd"
+              className="bg-slate-950 border border-slate-700 rounded-md px-2 py-1.5 text-slate-100"
+            />
+          </label>
+        </div>
+      )}
+      <div>
+        <div className="text-xs text-slate-400 mb-2">Projects (optional — empty = all)</div>
+        {projectsLoading && <div className="text-xs text-slate-500 mb-3">Loading projects...</div>}
+        {err && <div className="text-amber-400 text-sm mb-2">{err}</div>}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {projects.map((p) => (
+            <button
+              key={p.key}
+              type="button"
+              onClick={() => toggleProject(p.key)}
+              className={`text-xs px-2 py-1 rounded-md border transition-colors ${
+                projectKeys.includes(p.key)
+                  ? "border-sky-500 bg-sky-950 text-sky-200"
+                  : "border-slate-700 text-slate-400 hover:border-slate-500"
+              }`}
+            >
+              {p.key}
+            </button>
+          ))}
+        </div>
+        {onApply && (
+          <button
+            type="button"
+            onClick={onApply}
+            className="px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500 text-white text-sm font-medium"
+          >
+            {applyLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function projectQuery(projectKeys: string[]) {
+  if (!projectKeys.length) return "";
+  return `&projects=${encodeURIComponent(projectKeys.join(","))}`;
+}
