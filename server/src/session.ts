@@ -10,16 +10,31 @@ export function sessionHasJira(session: AppSession): boolean {
   return Boolean(session.jira?.baseUrl);
 }
 
+export function getSessionAccountId(session: AppSession): string | null {
+  return session.jira?.accountId ?? null;
+}
+
 export function setJiraBasicSession(
   session: AppSession,
   secret: string,
-  payload: { baseUrl: string; email: string; apiToken: string; statusMapping?: Partial<StatusMapping> | null }
+  payload: {
+    baseUrl: string;
+    email: string;
+    apiToken: string;
+    displayName?: string;
+    accountId?: string;
+    avatarUrl?: string;
+    statusMapping?: Partial<StatusMapping> | null;
+  }
 ) {
   const sm = payload.statusMapping;
   session.jira = {
     authMode: "basic",
     baseUrl: payload.baseUrl.replace(/\/$/, ""),
     email: payload.email.trim(),
+    displayName: payload.displayName,
+    accountId: payload.accountId,
+    avatarUrl: payload.avatarUrl,
     tokenEnc: encryptSecret(payload.apiToken, secret),
     statusMapping: sm
       ? (Object.fromEntries(
@@ -38,6 +53,7 @@ export function setJiraOAuthSession(
     email: string;
     displayName?: string;
     accountId?: string;
+    avatarUrl?: string;
     accessToken: string;
     refreshToken?: string;
     expiresIn: number;
@@ -52,6 +68,7 @@ export function setJiraOAuthSession(
     email: payload.email.trim(),
     displayName: payload.displayName,
     accountId: payload.accountId,
+    avatarUrl: payload.avatarUrl,
     tokenEnc: encryptSecret(payload.accessToken, secret),
     refreshTokenEnc: payload.refreshToken ? encryptSecret(payload.refreshToken, secret) : undefined,
     expiresAt: Date.now() + payload.expiresIn * 1000,

@@ -3,10 +3,23 @@ import axios from "axios";
 import { z } from "zod";
 import { cacheGet, cacheSet, cacheInvalidatePrefix } from "../cache.js";
 import { aggregateSummary, issueToRow } from "../aggregate.js";
-import { jiraIssueWorklogs, jiraProjectList, jiraSearch, type JiraIssue } from "../jiraClient.js";
+import { aggregateHomeDashboard, type HomeWorklog } from "../homeAggregate.js";
+import {
+  jiraGetMyself,
+  jiraIssueWorklogs,
+  jiraProjectList,
+  jiraSearch,
+  pickAvatarUrl,
+  type JiraIssue,
+} from "../jiraClient.js";
+import {
+  workWeekDateRange,
+  workWeekEndExclusive,
+  workWeekStart,
+} from "../workWeek.js";
 import { fetchAllIssuesForJql } from "../fetchAllIssues.js";
 import { resolveJiraClient } from "../jiraAuth.js";
-import { sessionHasJira } from "../session.js";
+import { getSessionAccountId, sessionHasJira } from "../session.js";
 import { jqlStatusIn, jqlStatusNotIn } from "../statusMapping.js";
 
 function sessionMeta(req: Request) {
@@ -169,6 +182,104 @@ export function apiRouter(sessionSecret: string) {
       res.json(payload);
     } catch (e: unknown) {
       res.status(502).json({ error: upstreamError("Summary failed", e) });
+    }
+  });
+
+  const homeQuery = z.object({
+    projects: z.string().optional(),
+  });
+
+  r.get("/home/dashboard", async (req, res) => {
+    const client = await requireJira(req);
+    if (!client) {
+      res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
+      return;
+    }
+    const jira = req.session.jira;
+    if (!jira) {
+      res.status(401).json({ error: "Not connected to Jira." });
+      return;
+    }
+
+    let accountId = getSessionAccountId(req.session);
+    if (!accountId) {
+      try {
+        const me = await jiraGetMyself(client);
+        accountId = me.accountId;
+        jira.accountId = me.accountId;
+        if (!jira.displayName && me.displayName) jira.displayName = me.displayName;
+      } catch {
+        res.status(401).json({ error: "Could not resolve Jira user. Reconnect in Settings." });
+        return;
+      }
+    }
+
+    const q = homeQuery.safeParse(req.query);
+    if (!q.success) {
+      res.status(400).json({ error: q.error.flatten() });
+      return;
+    }
+
+    const projectKeys = q.data.projects
+      ? q.data.projects.split(",").map((k) => k.trim()).filter(Boolean)
+      : [];
+    const jql = `${projectJqlPrefix(projectKeys)}assignee = currentUser() AND resolution is empty ORDER BY updated DESC`;
+
+    const weekStart = workWeekStart();
+    const weekEnd = workWeekEndExclusive(weekStart);
+    const { from: weekFrom, to: weekTo } = workWeekDateRange(weekStart);
+    const worklogJql = `${projectJqlPrefix(projectKeys)}worklogAuthor = currentUser() AND worklogDate >= "${weekFrom}" AND worklogDate <= "${weekTo}" ORDER BY updated DESC`;
+
+    const cacheKey = `home:${jira.baseUrl}:${accountId}:${projectKeys.join(",")}:${weekFrom}`;
+    const cached = cacheGet<unknown>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    try {
+      const issues = await fetchAllIssuesForJql(client, jql, 500);
+
+      const fromMs = weekStart.getTime();
+      const toMs = weekEnd.getTime();
+      const worklogs: HomeWorklog[] = [];
+
+      try {
+        const worklogIssues = await fetchAllIssuesForJql(
+          client,
+          worklogJql,
+          200,
+          ["summary", "status", "issuetype", "assignee"]
+        );
+        for (const issue of worklogIssues) {
+          try {
+            const wl = await jiraIssueWorklogs(client, issue.id);
+            for (const w of wl.worklogs) {
+              const t = Date.parse(w.started);
+              if (t < fromMs || t >= toMs) continue;
+              worklogs.push({
+                started: w.started,
+                timeSpentSeconds: w.timeSpentSeconds,
+                authorAccountId: w.author.accountId,
+              });
+            }
+          } catch {
+            /* skip per-issue worklog errors */
+          }
+        }
+      } catch {
+        /* worklog JQL optional — dashboard still loads without time data */
+      }
+
+      const payload = aggregateHomeDashboard(issues, worklogs, accountId, {
+        displayName: jira.displayName,
+        email: jira.email,
+        avatarUrl: jira.avatarUrl,
+      });
+      cacheSet(cacheKey, payload, 90_000);
+      res.json(payload);
+    } catch (e: unknown) {
+      res.status(502).json({ error: upstreamError("Home dashboard failed", e) });
     }
   });
 

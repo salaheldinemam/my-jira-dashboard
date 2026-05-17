@@ -10,6 +10,7 @@ declare module "express-session" {
       cloudId?: string;
       displayName?: string;
       accountId?: string;
+      avatarUrl?: string;
       tokenEnc: string;
       refreshTokenEnc?: string;
       expiresAt?: number;

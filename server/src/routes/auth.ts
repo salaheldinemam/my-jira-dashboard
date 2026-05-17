@@ -9,7 +9,7 @@ import {
   getAtlassianOAuthConfig,
   isOAuthConfigured,
 } from "../atlassianOAuth.js";
-import { createJiraClient, jiraGetMyself } from "../jiraClient.js";
+import { createJiraClient, jiraGetMyself, pickAvatarUrl } from "../jiraClient.js";
 import { clearJiraSession, setJiraBasicSession, setJiraOAuthSession } from "../session.js";
 import type { StatusMapping } from "../statusMapping.js";
 
@@ -101,6 +101,7 @@ export function authRouter(sessionSecret: string) {
         email: me.emailAddress ?? "connected@atlassian",
         displayName: me.displayName,
         accountId: me.accountId,
+        avatarUrl: pickAvatarUrl(me.avatarUrls),
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
         expiresIn: tokens.expires_in,
@@ -134,6 +135,9 @@ export function authRouter(sessionSecret: string) {
         baseUrl: normalizedBaseUrl,
         email,
         apiToken,
+        displayName: me.displayName,
+        accountId: me.accountId,
+        avatarUrl: pickAvatarUrl(me.avatarUrls),
         statusMapping: statusMapping as Partial<StatusMapping> | null | undefined,
       });
       res.json({
@@ -177,6 +181,8 @@ export function authRouter(sessionSecret: string) {
       baseUrl: jira.baseUrl,
       email: jira.email,
       displayName: jira.displayName,
+      accountId: jira.accountId,
+      avatarUrl: jira.avatarUrl,
       oauthAvailable: isOAuthConfigured(),
     });
   });

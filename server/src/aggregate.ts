@@ -93,9 +93,25 @@ export function groupIssuesByStatus(
   return buckets;
 }
 
+function fieldDuedate(issue: JiraIssue): string | null {
+  const d = issue.fields.duedate;
+  return typeof d === "string" ? d : null;
+}
+
+function fieldPriority(issue: JiraIssue): string {
+  return fieldString(issue, "priority");
+}
+
+function fieldProject(issue: JiraIssue): { key: string; name: string } | null {
+  const p = issue.fields.project as { key?: string; name?: string } | null | undefined;
+  if (!p?.key) return null;
+  return { key: p.key, name: p.name ?? p.key };
+}
+
 export function issueToRow(issue: JiraIssue) {
   const assignee = issue.fields.assignee as { displayName?: string; accountId?: string } | null;
-  const reporter = issue.fields.reporter as { displayName?: string } | null;
+  const reporter = issue.fields.reporter as { displayName?: string; accountId?: string } | null;
+  const project = fieldProject(issue);
   return {
     key: issue.key,
     summary: typeof issue.fields.summary === "string" ? issue.fields.summary : "",
@@ -104,6 +120,11 @@ export function issueToRow(issue: JiraIssue) {
     assignee: assignee?.displayName ?? "Unassigned",
     assigneeAccountId: assignee?.accountId,
     reporter: reporter?.displayName ?? "",
+    reporterAccountId: reporter?.accountId,
     updated: fieldUpdated(issue),
+    duedate: fieldDuedate(issue),
+    priority: fieldPriority(issue),
+    projectKey: project?.key,
+    projectName: project?.name,
   };
 }

@@ -63,10 +63,28 @@ async function withVersionFallback<T>(
   }
 }
 
-export async function jiraGetMyself(client: AxiosInstance) {
+export type JiraMyself = {
+  accountId: string;
+  displayName?: string;
+  emailAddress?: string;
+  avatarUrls?: Record<string, string>;
+};
+
+export function pickAvatarUrl(avatarUrls?: Record<string, string>): string | undefined {
+  if (!avatarUrls) return undefined;
+  return (
+    avatarUrls["48x48"] ??
+    avatarUrls["32x32"] ??
+    avatarUrls["24x24"] ??
+    avatarUrls["16x16"] ??
+    Object.values(avatarUrls).find((u) => typeof u === "string" && u.length > 0)
+  );
+}
+
+export async function jiraGetMyself(client: AxiosInstance): Promise<JiraMyself> {
   return withVersionFallback(client, async (v) => {
     const { data } = await client.get(`/${v}/myself`);
-    return data as { accountId: string; displayName?: string; emailAddress?: string };
+    return data as JiraMyself;
   });
 }
 

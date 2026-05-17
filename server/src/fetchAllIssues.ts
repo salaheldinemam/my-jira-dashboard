@@ -8,6 +8,9 @@ const FIELDS = [
   "assignee",
   "reporter",
   "updated",
+  "duedate",
+  "priority",
+  "project",
 ];
 
 /** Same issue can appear on multiple pages if the result set shifts between requests (Jira pagination quirk). */
