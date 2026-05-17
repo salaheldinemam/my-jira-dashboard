@@ -1,6 +1,7 @@
 node_modules
 dist
 .env
+.sessions
 .DS_Store
 *.log
 /.vs

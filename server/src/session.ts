@@ -84,14 +84,18 @@ export function setOAuthTokens(
   session: AppSession,
   secret: string,
   payload: { accessToken: string; refreshToken?: string; expiresIn: number }
-) {
+): boolean {
   const jira = session.jira;
-  if (!jira || jira.authMode !== "oauth") return;
-  jira.tokenEnc = encryptSecret(payload.accessToken, secret);
-  if (payload.refreshToken) {
-    jira.refreshTokenEnc = encryptSecret(payload.refreshToken, secret);
-  }
-  jira.expiresAt = Date.now() + payload.expiresIn * 1000;
+  if (!jira || jira.authMode !== "oauth") return false;
+  session.jira = {
+    ...jira,
+    tokenEnc: encryptSecret(payload.accessToken, secret),
+    refreshTokenEnc: payload.refreshToken
+      ? encryptSecret(payload.refreshToken, secret)
+      : jira.refreshTokenEnc,
+    expiresAt: Date.now() + payload.expiresIn * 1000,
+  };
+  return true;
 }
 
 export function clearJiraSession(session: AppSession) {

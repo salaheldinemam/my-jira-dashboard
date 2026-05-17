@@ -10,6 +10,8 @@ import {
   isOAuthConfigured,
 } from "../atlassianOAuth.js";
 import { createJiraClient, jiraGetMyself, pickAvatarUrl } from "../jiraClient.js";
+import { resolveJiraClientConfig } from "../jiraAuth.js";
+import { persistSession } from "../persistSession.js";
 import { clearJiraSession, setJiraBasicSession, setJiraOAuthSession } from "../session.js";
 import type { StatusMapping } from "../statusMapping.js";
 
@@ -169,12 +171,28 @@ export function authRouter(sessionSecret: string) {
     });
   });
 
-  r.get("/me", (req, res) => {
+  r.get("/me", async (req, res) => {
     const jira = req.session.jira;
     if (!jira?.baseUrl) {
       res.json({ connected: false, oauthAvailable: isOAuthConfigured() });
       return;
     }
+
+    if (jira.authMode === "oauth") {
+      const { config, sessionTouched } = await resolveJiraClientConfig(req.session, sessionSecret);
+      if (sessionTouched) {
+        try {
+          await persistSession(req);
+        } catch (err) {
+          console.error("Failed to persist session on /me:", err);
+        }
+      }
+      if (!config) {
+        res.json({ connected: false, oauthAvailable: isOAuthConfigured() });
+        return;
+      }
+    }
+
     res.json({
       connected: true,
       authMode: jira.authMode,

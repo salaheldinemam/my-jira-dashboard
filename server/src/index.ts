@@ -5,6 +5,7 @@ import express from "express";
 import session from "express-session";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import { FileSessionStore } from "./fileSessionStore.js";
 import { apiRouter } from "./routes/api.js";
 import { authRouter } from "./routes/auth.js";
 
@@ -15,6 +16,9 @@ dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
 
 const PORT = Number(process.env.PORT) || 4000;
 const SESSION_SECRET = process.env.SESSION_SECRET?.trim() || "dev-session-secret-change-me";
+const SESSION_MAX_AGE_MS = Number(process.env.SESSION_MAX_AGE_MS) || 1000 * 60 * 60 * 24 * 30;
+const sessionsDir =
+  process.env.SESSION_STORE_PATH?.trim() || path.resolve(process.cwd(), ".sessions");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -29,13 +33,15 @@ app.use(express.json({ limit: "1mb" }));
 app.use(
   session({
     secret: SESSION_SECRET,
+    store: new FileSessionStore({ path: sessionsDir }),
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 14,
+      maxAge: SESSION_MAX_AGE_MS,
     },
   })
 );
