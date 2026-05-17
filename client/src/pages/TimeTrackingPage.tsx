@@ -1,8 +1,24 @@
+import { addDays, format, startOfDay } from "date-fns";
 import { Fragment, useState } from "react";
 import { api } from "../api";
-import { FiltersBar, projectQuery } from "../components/FiltersBar";
+import { FiltersBar, projectQuery, type PeriodMode } from "../components/FiltersBar";
 import { JiraIssueLink } from "../components/JiraIssueLink";
 import { useUiStore } from "../store";
+
+function isoDate(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
+function rangeForMode(mode: PeriodMode, dateFrom: string, dateTo: string) {
+  const today = startOfDay(new Date());
+  if (mode === "yesterday") {
+    return { from: isoDate(addDays(today, -1)), to: isoDate(today) };
+  }
+  if (mode === "today") {
+    return { from: isoDate(today), to: isoDate(addDays(today, 1)) };
+  }
+  return { from: dateFrom, to: dateTo };
+}
 
 type Row = {
   employee: string;
@@ -13,19 +29,21 @@ type Row = {
 
 export function TimeTrackingPage() {
   const { projectKeys, dateFrom, dateTo } = useUiStore();
+  const [dateMode, setDateMode] = useState<PeriodMode>("yesterday");
   const [rows, setRows] = useState<Row[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  async function loadTimeTracking() {
+  async function loadTimeTracking(mode: PeriodMode = dateMode) {
+    const { from, to } = rangeForMode(mode, dateFrom, dateTo);
     setLoading(true);
     setError(null);
     setHasLoaded(true);
     try {
       const q =
-        `?from=${encodeURIComponent(dateFrom)}&to=${encodeURIComponent(dateTo)}` + projectQuery(projectKeys);
+        `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` + projectQuery(projectKeys);
       const res = await api<{ rows: Row[] }>(`/api/time-tracking${q}`);
       setRows(res.rows);
     } catch (e) {
@@ -39,12 +57,21 @@ export function TimeTrackingPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-white mb-2">Time tracking</h1>
-      <p className="text-slate-400 text-sm mb-6">Effort by team member for worklogs in the date range.</p>
-      <FiltersBar onApply={loadTimeTracking} applyLabel="Load time tracking" />
+      <p className="text-slate-400 text-sm mb-4">Effort by team member for worklogs in the selected period.</p>
+      <FiltersBar
+        onApply={() => void loadTimeTracking()}
+        applyLabel="Load time tracking"
+        applyDisabled={loading}
+        periodMode={dateMode}
+        onPeriodModeChange={setDateMode}
+        showDateFilters={dateMode === "custom"}
+      />
       {loading && <div className="text-slate-500">Loading…</div>}
       {error && <div className="text-red-400">{error}</div>}
       {!loading && !error && !hasLoaded && (
-        <div className="text-slate-500 text-sm">Set your filters, then click "Load time tracking".</div>
+        <div className="text-slate-500 text-sm">
+          Select a period{dateMode === "custom" ? " and date range" : ""}, then click &quot;Load time tracking&quot;.
+        </div>
       )}
       {!loading && !error && (
         <div className="overflow-x-auto rounded-xl border border-slate-800">
