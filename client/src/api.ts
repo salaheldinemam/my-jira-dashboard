@@ -11,7 +11,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     if (res.status === 401) {
-      throw new Error("Unauthorized: Jira credentials are missing or invalid in server environment.");
+      throw new Error("Not connected to Jira. Open Settings and sign in with Atlassian.");
     }
     let err = `${res.status}`;
     try {

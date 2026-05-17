@@ -1,16 +1,39 @@
 import axios, { type AxiosInstance } from "axios";
 
+export type JiraClientConfig =
+  | { mode: "basic"; baseUrl: string; email: string; apiToken: string }
+  | { mode: "oauth"; cloudId: string; accessToken: string; baseUrl: string };
+
+/** @deprecated Use JiraClientConfig */
 export type JiraCredentials = {
   baseUrl: string;
   email: string;
   apiToken: string;
 };
 
-export function createJiraClient(creds: JiraCredentials): AxiosInstance {
-  const auth = Buffer.from(`${creds.email}:${creds.apiToken}`).toString("base64");
-  const baseURL = creds.baseUrl.replace(/\/$/, "");
+export function createJiraClient(creds: JiraClientConfig | JiraCredentials): AxiosInstance {
+  if ("mode" in creds) {
+    if (creds.mode === "oauth") {
+      return axios.create({
+        baseURL: `https://api.atlassian.com/ex/jira/${creds.cloudId}/rest/api`,
+        headers: {
+          Authorization: `Bearer ${creds.accessToken}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        timeout: 60_000,
+      });
+    }
+    return createBasicJiraClient(creds.baseUrl, creds.email, creds.apiToken);
+  }
+  return createBasicJiraClient(creds.baseUrl, creds.email, creds.apiToken);
+}
+
+function createBasicJiraClient(baseUrl: string, email: string, apiToken: string): AxiosInstance {
+  const auth = Buffer.from(`${email}:${apiToken}`).toString("base64");
+  const normalized = baseUrl.replace(/\/$/, "");
   return axios.create({
-    baseURL: `${baseURL}/rest/api`,
+    baseURL: `${normalized}/rest/api`,
     headers: {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
@@ -64,9 +87,6 @@ export async function jiraSearch(
   const maxResults = Math.min(opts?.maxResults ?? 100, 100);
   const body = { jql, startAt, maxResults, fields };
 
-  // Prefer POST /3/search first: it is supported on almost all Jira Cloud/Data Center
-  // instances. Starting with GET /3/search/jql forces a failed round-trip on hosts
-  // that do not expose that route, doubling latency for every paginated page.
   try {
     const { data } = await client.post("/3/search", body);
     return data as JiraSearchResponse;
@@ -74,7 +94,6 @@ export async function jiraSearch(
     if (!shouldTryNextSearchRoute(err)) throw err;
   }
 
-  // Newer Jira Cloud path: GET /3/search/jql (CHANGE-2046).
   try {
     const { data } = await client.get("/3/search/jql", {
       params: {

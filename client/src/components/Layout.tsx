@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api } from "../api";
-import { loadJiraSettings } from "../jiraSettings";
+import { loadJiraConnection, saveJiraConnection } from "../jiraSettings";
 import { useUiStore } from "../store";
 
 const nav = [
@@ -20,17 +20,29 @@ export function Layout() {
   useEffect(() => {
     let alive = true;
     (async () => {
-      const saved = loadJiraSettings();
-      if (!saved) {
-        if (alive) setJiraBaseUrl(null);
-        return;
-      }
       try {
-        const res = await api<{ normalizedBaseUrl: string }>("/api/auth/jira", {
-          method: "POST",
-          body: JSON.stringify(saved),
-        });
-        if (alive) setJiraBaseUrl(res.normalizedBaseUrl ?? null);
+        const me = await api<{
+          connected: boolean;
+          baseUrl?: string;
+          email?: string;
+          authMode?: "oauth" | "basic";
+          displayName?: string;
+        }>("/api/auth/me");
+        if (!alive) return;
+        if (me.connected && me.baseUrl && me.email) {
+          setJiraBaseUrl(me.baseUrl);
+          const saved = loadJiraConnection();
+          if (!saved || saved.baseUrl !== me.baseUrl) {
+            saveJiraConnection({
+              baseUrl: me.baseUrl,
+              email: me.email,
+              authMode: me.authMode ?? "oauth",
+              displayName: me.displayName,
+            });
+          }
+        } else {
+          setJiraBaseUrl(null);
+        }
       } catch {
         if (alive) setJiraBaseUrl(null);
       }

@@ -3,20 +3,16 @@ import axios from "axios";
 import { z } from "zod";
 import { cacheGet, cacheSet, cacheInvalidatePrefix } from "../cache.js";
 import { aggregateSummary, issueToRow } from "../aggregate.js";
-import {  createJiraClient,  jiraIssueWorklogs,  jiraProjectList,  jiraSearch,  type JiraIssue} from "../jiraClient.js";
+import { jiraIssueWorklogs, jiraProjectList, jiraSearch, type JiraIssue } from "../jiraClient.js";
 import { fetchAllIssuesForJql } from "../fetchAllIssues.js";
-import { getApiToken } from "../session.js";
+import { resolveJiraClient } from "../jiraAuth.js";
+import { sessionHasJira } from "../session.js";
 import { jqlStatusIn, jqlStatusNotIn } from "../statusMapping.js";
 
-function sessionJiraConfig(req: Request, sessionSecret: string) {
+function sessionMeta(req: Request) {
   const jira = req.session?.jira;
-  const token = getApiToken(req.session, sessionSecret);
-  if (!jira?.baseUrl || !jira.email || !token) return null;
-  return {
-    baseUrl: jira.baseUrl,
-    email: jira.email,
-    apiToken: token,
-  };
+  if (!sessionHasJira(req.session) || !jira) return null;
+  return { baseUrl: jira.baseUrl, email: jira.email, authMode: jira.authMode };
 }
 
 /** Leading project filter for JQL (narrow index first). Empty string when no projects are selected. */
@@ -43,10 +39,8 @@ const WORKLOAD_ASSIGNEE_ALLOWLIST: string[] = [
 /// API routes, all prefixed with /api. Requires Jira credentials in session.
 export function apiRouter(sessionSecret: string) {
   const r = Router();
-  function requireJira(req: Request) {
-    const cfg = sessionJiraConfig(req, sessionSecret);
-    if (!cfg) return null;
-    return createJiraClient(cfg);
+  async function requireJira(req: Request) {
+    return resolveJiraClient(req, sessionSecret);
   }
   function upstreamError(defaultMsg: string, e: unknown): string {
     if (axios.isAxiosError(e)) {
@@ -65,22 +59,22 @@ export function apiRouter(sessionSecret: string) {
   }
 
   r.get("/jira/base-url", (req, res) => {
-    const cfg = sessionJiraConfig(req, sessionSecret);
-    if (!cfg) {
-      res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
+    const meta = sessionMeta(req);
+    if (!meta) {
+      res.status(401).json({ error: "Not connected to Jira. Open Settings and sign in with Atlassian." });
       return;
     }
-    res.json({ baseUrl: cfg.baseUrl });
+    res.json({ baseUrl: meta.baseUrl });
   });
 
   r.get("/projects", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
-      res.status(401).json({ error: "Set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN in environment." });
+      res.status(401).json({ error: "Not connected to Jira. Open Settings and sign in with Atlassian." });
       return;
     }
-    const cfg = sessionJiraConfig(req, sessionSecret);
-    const cacheKey = `projects:${cfg?.baseUrl}:${cfg?.email}`;
+    const meta = sessionMeta(req);
+    const cacheKey = `projects:${meta?.baseUrl}:${meta?.email}`;
     const cached = cacheGet<unknown>(cacheKey);
     if (cached) {
       res.json(cached);
@@ -102,7 +96,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.get("/dashboard/summary", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -183,7 +177,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.get("/workload/by-assignee", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -264,7 +258,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.get("/testing", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -337,7 +331,7 @@ export function apiRouter(sessionSecret: string) {
 
   /** Project QR, LV3 Production Ticket only, excluding terminal statuses. */
   r.get("/qr/lv3-production", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -370,7 +364,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.get("/stories", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -432,7 +426,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.get("/time-tracking", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;
@@ -539,7 +533,7 @@ export function apiRouter(sessionSecret: string) {
   });
 
   r.post("/jql", async (req, res) => {
-    const client = requireJira(req);
+    const client = await requireJira(req);
     if (!client) {
       res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
       return;

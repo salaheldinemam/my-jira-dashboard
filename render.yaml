@@ -12,3 +12,9 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: ATLASSIAN_CLIENT_ID
+        sync: false
+      - key: ATLASSIAN_CLIENT_SECRET
+        sync: false
+      - key: ATLASSIAN_REDIRECT_URI
+        sync: false
