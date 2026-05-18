@@ -28,11 +28,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        // Jira user avatars (Gravatar + Atlassian CDN)
+        // Jira user avatars (Gravatar + Atlassian CDN; Gravatar may proxy via wp.com)
         "img-src": [
           "'self'",
           "data:",
           "https://secure.gravatar.com",
+          "https://*.wp.com",
           "https://*.atl-paas.net",
           "https://*.atlassian.com",
         ],
