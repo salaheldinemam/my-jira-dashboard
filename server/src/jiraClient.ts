@@ -95,6 +95,41 @@ function shouldTryNextSearchRoute(err: unknown): boolean {
   );
 }
 
+/** Newer Jira Cloud search (token pagination). */
+export type JiraSearchJqlResponse = {
+  issues: JiraIssue[];
+  nextPageToken?: string;
+  isLast?: boolean;
+};
+
+export async function jiraSearchJql(
+  client: AxiosInstance,
+  jql: string,
+  fields: string[],
+  opts?: { maxResults?: number; nextPageToken?: string }
+): Promise<JiraSearchJqlResponse> {
+  const maxResults = Math.min(opts?.maxResults ?? 100, 100);
+  const body: Record<string, unknown> = { jql, maxResults, fields };
+  if (opts?.nextPageToken) body.nextPageToken = opts.nextPageToken;
+
+  try {
+    const { data } = await client.post("/3/search/jql", body);
+    return data as JiraSearchJqlResponse;
+  } catch (err) {
+    if (!shouldTryNextSearchRoute(err)) throw err;
+  }
+
+  const { data } = await client.get("/3/search/jql", {
+    params: {
+      jql,
+      maxResults,
+      fields,
+      ...(opts?.nextPageToken ? { nextPageToken: opts.nextPageToken } : {}),
+    },
+  });
+  return data as JiraSearchJqlResponse;
+}
+
 export async function jiraSearch(
   client: AxiosInstance,
   jql: string,

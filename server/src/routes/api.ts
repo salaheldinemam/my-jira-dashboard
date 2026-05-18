@@ -17,10 +17,15 @@ import {
   workWeekEndExclusive,
   workWeekStart,
 } from "../workWeek.js";
-import { fetchAllIssuesForJql } from "../fetchAllIssues.js";
+import { fetchAllIssuesForJql, TESTING_LIST_FIELDS } from "../fetchAllIssues.js";
 import { resolveJiraClient } from "../jiraAuth.js";
 import { getSessionAccountId, sessionHasJira } from "../session.js";
-import { jqlStatusIn, jqlStatusNotIn } from "../statusMapping.js";
+import {
+  DEFAULT_STATUS_MAPPING,
+  jqlStatusIn,
+  jqlStatusNotIn,
+  statusesForKeys,
+} from "../statusMapping.js";
 
 function sessionMeta(req: Request) {
   const jira = req.session?.jira;
@@ -363,9 +368,91 @@ export function apiRouter(sessionSecret: string) {
     }
   });
 
+  const TESTING_FAILED_STATUSES = new Set(
+    statusesForKeys(DEFAULT_STATUS_MAPPING, ["failedTesting"])
+  );
+  const TESTING_UNDER_STATUSES = new Set(
+    statusesForKeys(DEFAULT_STATUS_MAPPING, ["underTesting"])
+  );
+  const TESTING_READY_STATUSES = new Set(
+    statusesForKeys(DEFAULT_STATUS_MAPPING, ["readyForTesting"])
+  );
+  type TestingRow = ReturnType<typeof issueToRow>;
+
+  function testingJql(projectKeys: string[], statuses: string[]): string {
+    return (
+      `${projectJqlPrefix(projectKeys)}${jqlStatusIn(statuses)}` +
+      ` AND assignee is not EMPTY ORDER BY updated DESC`
+    );
+  }
+
+  function groupTestingByView(
+    rows: TestingRow[],
+    view: "failedTesting" | "underTesting" | "readyForTesting"
+  ): Record<string, TestingRow[]> {
+    const byGroup: Record<string, TestingRow[]> = {};
+    if (view === "failedTesting") {
+      for (const row of rows) {
+        if (!byGroup[row.assignee]) byGroup[row.assignee] = [];
+        byGroup[row.assignee].push(row);
+      }
+    } else {
+      for (const row of rows) {
+        const g = row.reporter.trim() || "Unknown";
+        if (!byGroup[g]) byGroup[g] = [];
+        byGroup[g].push(row);
+      }
+    }
+    return byGroup;
+  }
+
+  async function fetchTestingPipelineAll(
+    client: NonNullable<Awaited<ReturnType<typeof requireJira>>>,
+    projectKeys: string[]
+  ) {
+    const [failedIssues, underIssues, readyIssues] = await Promise.all([
+      fetchAllIssuesForJql(
+        client,
+        testingJql(projectKeys, [...TESTING_FAILED_STATUSES]),
+        5000,
+        TESTING_LIST_FIELDS
+      ),
+      fetchAllIssuesForJql(
+        client,
+        testingJql(projectKeys, [...TESTING_UNDER_STATUSES]),
+        5000,
+        TESTING_LIST_FIELDS
+      ),
+      fetchAllIssuesForJql(
+        client,
+        testingJql(projectKeys, [...TESTING_READY_STATUSES]),
+        5000,
+        TESTING_LIST_FIELDS
+      ),
+    ]);
+    return {
+      views: {
+        failedTesting: {
+          byGroup: groupTestingByView(failedIssues.map(issueToRow), "failedTesting"),
+          groupBy: "assignee" as const,
+        },
+        underTesting: {
+          byGroup: groupTestingByView(underIssues.map(issueToRow), "underTesting"),
+          groupBy: "reporter" as const,
+        },
+        readyForTesting: {
+          byGroup: groupTestingByView(readyIssues.map(issueToRow), "readyForTesting"),
+          groupBy: "reporter" as const,
+        },
+      },
+    };
+  }
+
   const testingQuery = z.object({
     projects: z.string().optional(),
-    view: z.enum(["underTesting", "readyForTesting", "failedTesting"]).default("underTesting"),
+    view: z
+      .enum(["all", "underTesting", "readyForTesting", "failedTesting"])
+      .default("all"),
   });
 
   r.get("/testing", async (req, res) => {
@@ -379,55 +466,36 @@ export function apiRouter(sessionSecret: string) {
       res.status(400).json({ error: q.error.flatten() });
       return;
     }
-    const failedTestingStatuses = ["Failed Testing", "Failed QA", "Testing Failed"];
-    const underTestingStatuses = ["In Testing", "Under Testing", "QA", "Testing"];
-    const readyForTestingStatuses = [
-      "Ready for Testing",
-      "Ready For Testing",
-      "Ready to Test",
-      "Ready For Test",
-      "Ready for QA",
-      "Ready For QA",
-    ];
     const projectKeys = q.data.projects
       ? q.data.projects.split(",").map((k) => k.trim()).filter(Boolean)
       : [];
     const bucket = q.data.view;
-    const statuses =
-      bucket === "failedTesting"
-        ? failedTestingStatuses
-        : bucket === "readyForTesting"
-          ? readyForTestingStatuses
-          : underTestingStatuses;
-    if (!statuses.length) {
-      res.json({ issues: [], byGroup: {}, groupBy: q.data.view === "failedTesting" ? "assignee" : "reporter" });
+
+    if (bucket === "all") {
+      try {
+        const payload = await fetchTestingPipelineAll(client, projectKeys);
+        res.json(payload);
+      } catch (e: unknown) {
+        res.status(502).json({ error: upstreamError("Testing view failed", e) });
+      }
       return;
     }
-    const jql = `${projectJqlPrefix(projectKeys)}${jqlStatusIn(statuses)} AND assignee is not EMPTY ORDER BY updated DESC`;
-    const cacheKey = `testing-v2:${jql}`;
-    const hit = cacheGet<unknown>(cacheKey);
-    if (hit) {
-      res.json(hit);
+
+    const statuses =
+      bucket === "failedTesting"
+        ? [...TESTING_FAILED_STATUSES]
+        : bucket === "readyForTesting"
+          ? [...TESTING_READY_STATUSES]
+          : [...TESTING_UNDER_STATUSES];
+    if (!statuses.length) {
+      res.json({ issues: [], byGroup: {}, groupBy: bucket === "failedTesting" ? "assignee" : "reporter" });
       return;
     }
     try {
-      const issues = await fetchAllIssuesForJql(client, jql, 5000);
+      const issues = await fetchAllIssuesForJql(client, testingJql(projectKeys, statuses), 5000, TESTING_LIST_FIELDS);
       const rows = issues.map(issueToRow);
-      const byGroup: Record<string, typeof rows> = {};
-      if (bucket === "failedTesting") {
-        for (const row of rows) {
-          if (!byGroup[row.assignee]) byGroup[row.assignee] = [];
-          byGroup[row.assignee].push(row);
-        }
-      } else {
-        for (const row of rows) {
-          const g = row.reporter.trim() || "Unknown";
-          if (!byGroup[g]) byGroup[g] = [];
-          byGroup[g].push(row);
-        }
-      }
+      const byGroup = groupTestingByView(rows, bucket);
       const payload = { issues: rows, byGroup, groupBy: bucket === "failedTesting" ? "assignee" : "reporter" };
-      cacheSet(cacheKey, payload, 45_000);
       res.json(payload);
     } catch (e: unknown) {
       res.status(502).json({ error: upstreamError("Testing view failed", e) });

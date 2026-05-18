@@ -1,5 +1,5 @@
 import type { AxiosInstance } from "axios";
-import { jiraSearch, type JiraIssue } from "./jiraClient.js";
+import { jiraSearch, jiraSearchJql, type JiraIssue } from "./jiraClient.js";
 
 const FIELDS = [
   "summary",
@@ -13,6 +13,9 @@ const FIELDS = [
   "project",
 ];
 
+const PAGE_SIZE = 100;
+const PAGE_FETCH_CONCURRENCY = 6;
+
 /** Same issue can appear on multiple pages if the result set shifts between requests (Jira pagination quirk). */
 function dedupeIssuesByKey(issues: JiraIssue[]): JiraIssue[] {
   const seen = new Set<string>();
@@ -25,22 +28,93 @@ function dedupeIssuesByKey(issues: JiraIssue[]): JiraIssue[] {
   return out;
 }
 
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const i = index++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+async function fetchAllIssuesViaJqlApi(
+  client: AxiosInstance,
+  jql: string,
+  maxCap: number,
+  fields: string[]
+): Promise<JiraIssue[]> {
+  const all: JiraIssue[] = [];
+  let nextPageToken: string | undefined;
+
+  do {
+    const res = await jiraSearchJql(client, jql, fields, {
+      maxResults: PAGE_SIZE,
+      nextPageToken,
+    });
+    const batch = res.issues ?? [];
+    all.push(...batch);
+    if (all.length >= maxCap || batch.length === 0) break;
+    if (res.isLast || !res.nextPageToken) break;
+    nextPageToken = res.nextPageToken;
+  } while (nextPageToken);
+
+  return dedupeIssuesByKey(all.slice(0, maxCap));
+}
+
+async function fetchAllIssuesLegacyParallel(
+  client: AxiosInstance,
+  jql: string,
+  maxCap: number,
+  fields: string[]
+): Promise<JiraIssue[]> {
+  const first = await jiraSearch(client, jql, fields, { startAt: 0, maxResults: PAGE_SIZE });
+  const all: JiraIssue[] = [...first.issues];
+  const total = Math.min(first.total, maxCap);
+
+  if (first.issues.length === 0 || all.length >= total) {
+    return dedupeIssuesByKey(all);
+  }
+
+  const offsets: number[] = [];
+  for (let startAt = first.issues.length; startAt < total; startAt += PAGE_SIZE) {
+    offsets.push(startAt);
+  }
+
+  const pages = await mapPool(offsets, PAGE_FETCH_CONCURRENCY, (startAt) =>
+    jiraSearch(client, jql, fields, { startAt, maxResults: PAGE_SIZE })
+  );
+
+  for (const page of pages) {
+    all.push(...page.issues);
+    if (all.length >= maxCap) break;
+  }
+
+  return dedupeIssuesByKey(all.slice(0, maxCap));
+}
+
 export async function fetchAllIssuesForJql(
   client: AxiosInstance,
   jql: string,
   maxCap = 5000,
   fields: string[] = FIELDS
 ): Promise<JiraIssue[]> {
-  const all: JiraIssue[] = [];
-  let startAt = 0;
-  const pageSize = 100;
-  while (all.length < maxCap) {
-    const res = await jiraSearch(client, jql, fields, { startAt, maxResults: pageSize });
-    all.push(...res.issues);
-    startAt += res.issues.length;
-    if (startAt >= res.total || res.issues.length === 0) break;
+  try {
+    return await fetchAllIssuesViaJqlApi(client, jql, maxCap, fields);
+  } catch {
+    return fetchAllIssuesLegacyParallel(client, jql, maxCap, fields);
   }
-  return dedupeIssuesByKey(all);
 }
+
+/** Minimal fields for testing pipeline views (smaller Jira payloads). */
+export const TESTING_LIST_FIELDS = ["summary", "status", "assignee", "reporter", "updated"];
 
 export { FIELDS as JIRA_LIST_FIELDS };
