@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
@@ -22,7 +23,23 @@ const sessionsDir =
 
 const app = express();
 app.set("trust proxy", 1);
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        // Jira user avatars (Gravatar + Atlassian CDN)
+        "img-src": [
+          "'self'",
+          "data:",
+          "https://secure.gravatar.com",
+          "https://*.atl-paas.net",
+          "https://*.atlassian.com",
+        ],
+      },
+    },
+  })
+);
 app.use(
   cors({
     origin: process.env.CLIENT_ORIGIN ?? true,
@@ -53,9 +70,18 @@ app.use("/api", apiRouter(SESSION_SECRET));
 
 if (process.env.NODE_ENV === "production") {
   const clientDist = path.resolve(__dirname, "../../client/dist");
+  const indexHtml = path.join(clientDist, "index.html");
+  if (!fs.existsSync(indexHtml)) {
+    console.error(`Production client build not found at ${clientDist}. Run "npm run build" from the repo root.`);
+  }
   app.use(express.static(clientDist));
   app.get("*", (_req, res) => {
-    res.sendFile(path.join(clientDist, "index.html"));
+    res.sendFile(indexHtml, (err) => {
+      if (err) {
+        console.error("Failed to serve SPA index:", err);
+        if (!res.headersSent) res.status(500).send("Client build missing");
+      }
+    });
   });
 }
 
