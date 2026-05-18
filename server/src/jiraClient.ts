@@ -192,17 +192,34 @@ export async function jiraProjectList(client: AxiosInstance) {
   }
 }
 
-export async function jiraIssueWorklogs(client: AxiosInstance, issueId: string) {
+export type JiraWorklog = {
+  id: string;
+  author: { accountId: string; displayName?: string };
+  started: string;
+  timeSpentSeconds: number;
+  comment?: unknown;
+};
+
+export async function jiraIssueWorklogs(
+  client: AxiosInstance,
+  issueId: string,
+  opts?: { startedAfter?: number; startedBefore?: number }
+) {
   return withVersionFallback(client, async (v) => {
-    const { data } = await client.get(`/${v}/issue/${issueId}/worklog`);
-    return data as {
-      worklogs: {
-        id: string;
-        author: { accountId: string; displayName?: string };
-        started: string;
-        timeSpentSeconds: number;
-        comment?: unknown;
-      }[];
-    };
+    const all: JiraWorklog[] = [];
+    let startAt = 0;
+    const maxResults = 100;
+    for (;;) {
+      const params: Record<string, number> = { startAt, maxResults };
+      if (opts?.startedAfter != null) params.startedAfter = opts.startedAfter;
+      if (opts?.startedBefore != null) params.startedBefore = opts.startedBefore;
+      const { data } = await client.get(`/${v}/issue/${issueId}/worklog`, { params });
+      const page = (data as { worklogs?: JiraWorklog[]; total?: number }).worklogs ?? [];
+      all.push(...page);
+      const total = (data as { total?: number }).total ?? page.length;
+      if (page.length === 0 || startAt + page.length >= total) break;
+      startAt += page.length;
+    }
+    return { worklogs: all };
   });
 }

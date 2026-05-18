@@ -25,3 +25,18 @@ export function workWeekDateRange(weekStart: Date): { from: string; to: string }
     to: isoDate(workWeekLastDay(weekStart)),
   };
 }
+
+/** Calendar day (local) for a Jira worklog `started` timestamp. */
+export function worklogCalendarDay(started: string): string | null {
+  const t = Date.parse(started);
+  if (Number.isNaN(t)) return null;
+  return isoDate(startOfDay(new Date(t)));
+}
+
+/** Whether a worklog falls on a Sun–Thu day in the work week containing `weekStart`. */
+export function isWorklogInWorkWeek(started: string, weekStart: Date): boolean {
+  const day = worklogCalendarDay(started);
+  if (!day) return false;
+  const { from, to } = workWeekDateRange(weekStart);
+  return day >= from && day <= to;
+}

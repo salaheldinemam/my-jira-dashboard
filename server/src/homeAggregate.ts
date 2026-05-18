@@ -5,31 +5,53 @@ import type { StatusMapping } from "./statusMapping.js";
 import { statusesForKeys } from "./statusMapping.js";
 import {
   isoDate,
-  workWeekEndExclusive,
+  isWorklogInWorkWeek,
   workWeekStart,
   WORK_WEEK_LENGTH_DAYS,
+  worklogCalendarDay,
 } from "./workWeek.js";
 
 export const HOME_STATUS_MAPPING: StatusMapping = {
-  open: ["Open", "To Do", "Backlog", "New", "Selected for Development", "TO DO"],
-  inProgress: ["In Progress", "Doing", "Development", "Code Review", "Done Dev"],
+    open: ["Open", "To Do", "Backlog", "New", "Selected for Development", "TO DO"],
+    inProgress: ["In Progress", "Under investigation", "Waiting for Deployment", "Done Dev"],
   readyForTesting: [
-    "Ready for Testing",
-    "Ready For Testing",
-    "Ready to Test",
-    "Ready For Test",
-    "Ready for QA",
-    "Ready For QA",
+    "Ready for testing"
   ],
-  underTesting: ["In Testing", "Under Testing", "QA", "Testing"],
+  underTesting: ["In Testing"],
   reopened: ["Reopened"],
-  failedTesting: ["Failed Testing", "Failed QA", "Testing Failed"],
+    failedTesting: ["Testing failed"],
   underInvestigation: ["Under Investigation", "Blocked", "On Hold", "Postponed"],
 };
 
 const FAILED_STATUSES = new Set(statusesForKeys(HOME_STATUS_MAPPING, ["failedTesting"]));
 const READY_STATUSES = new Set(statusesForKeys(HOME_STATUS_MAPPING, ["readyForTesting"]));
 const UNDER_TEST_STATUSES = new Set(statusesForKeys(HOME_STATUS_MAPPING, ["underTesting"]));
+
+const TYPE_KEYS = ["Story", "Bug", "Task", "Enhancement"] as const;
+
+/** Terminal / closed statuses omitted from home status and type charts. */
+const HOME_CHART_EXCLUDED_STATUSES = new Set(
+  [
+    "Released",
+    "Canceled",
+    "Cancelled",
+    "Testing Passed",
+    "Issue Passed",
+    "Done",
+    "Not a bug"
+  ].map((s) => s.toLowerCase())
+);
+
+function isHomeChartExcludedStatus(status: string): boolean {
+  return HOME_CHART_EXCLUDED_STATUSES.has(status.trim().toLowerCase());
+}
+
+/** Status buckets for tickets still in development (home “My active issues”). */
+export const HOME_ACTIVE_STATUS_BUCKETS = ["open", "inProgress", "reopened", "failedTesting", "underInvestigation"] as const;
+
+export function homeActiveIssueStatuses(): string[] {
+  return statusesForKeys(HOME_STATUS_MAPPING, [...HOME_ACTIVE_STATUS_BUCKETS]);
+}
 
 function parseDue(d: string | null | undefined): Date | null {
   if (!d) return null;
@@ -43,7 +65,8 @@ export function aggregateHomeDashboard(
   issues: JiraIssue[],
   worklogs: HomeWorklog[],
   accountId: string,
-  userMeta: { displayName?: string; email: string; avatarUrl?: string }
+  userMeta: { displayName?: string; email: string; avatarUrl?: string },
+  activeIssues: JiraIssue[]
 ) {
   const agg = aggregateSummary(issues, HOME_STATUS_MAPPING);
   const rows = issues.map(issueToRow);
@@ -55,6 +78,7 @@ export function aggregateHomeDashboard(
   const dueSoonRows: ReturnType<typeof issueToRow>[] = [];
   const overdueRows: ReturnType<typeof issueToRow>[] = [];
   const byStatus: Record<string, number> = {};
+  const byType: Record<string, number> = { Story: 0, Bug: 0, Task: 0, Enhancement: 0 };
   const projectCounts = new Map<string, { key: string; name: string; count: number }>();
 
   const ready: ReturnType<typeof issueToRow>[] = [];
@@ -62,7 +86,15 @@ export function aggregateHomeDashboard(
   const failed: ReturnType<typeof issueToRow>[] = [];
 
   for (const row of rows) {
-    byStatus[row.status] = (byStatus[row.status] ?? 0) + 1;
+    if (!isHomeChartExcludedStatus(row.status)) {
+      byStatus[row.status] = (byStatus[row.status] ?? 0) + 1;
+      const typ = row.issuetype;
+      if (typ in byType) byType[typ]++;
+      else {
+        const k = TYPE_KEYS.find((t) => typ.toLowerCase().includes(t.toLowerCase()));
+        if (k) byType[k]++;
+      }
+    }
 
     if (row.projectKey) {
       const existing = projectCounts.get(row.projectKey);
@@ -91,8 +123,6 @@ export function aggregateHomeDashboard(
   }
 
   const myWorklogs = worklogs.filter((w) => w.authorAccountId === accountId);
-  const weekStartMs = weekStart.getTime();
-  const weekEndMs = workWeekEndExclusive(weekStart).getTime();
   let totalSeconds = 0;
   const byDayMap = new Map<string, number>();
   for (let i = 0; i < WORK_WEEK_LENGTH_DAYS; i++) {
@@ -100,10 +130,10 @@ export function aggregateHomeDashboard(
   }
 
   for (const w of myWorklogs) {
-    const t = Date.parse(w.started);
-    if (t < weekStartMs || t >= weekEndMs) continue;
+    if (!isWorklogInWorkWeek(w.started, weekStart)) continue;
     totalSeconds += w.timeSpentSeconds;
-    const day = isoDate(startOfDay(new Date(t)));
+    const day = worklogCalendarDay(w.started);
+    if (!day) continue;
     byDayMap.set(day, (byDayMap.get(day) ?? 0) + w.timeSpentSeconds);
   }
 
@@ -114,7 +144,10 @@ export function aggregateHomeDashboard(
       hours: Math.round((seconds / 3600) * 100) / 100,
     }));
 
-  const issuesTable = rows.slice(0, 50);
+  const issuesTable = activeIssues
+    .map(issueToRow)
+    .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))
+    .slice(0, 50);
   const recentlyUpdated = [...rows]
     .sort((a, b) => Date.parse(b.updated) - Date.parse(a.updated))
     .slice(0, 10);
@@ -137,7 +170,7 @@ export function aggregateHomeDashboard(
       total: issues.length,
     },
     byStatus,
-    byType: agg.byType,
+    byType,
     issues: issuesTable,
     dueSoon: dueSoonRows.sort((a, b) => (a.duedate ?? "").localeCompare(b.duedate ?? "")),
     overdue: overdueRows.sort((a, b) => (a.duedate ?? "").localeCompare(b.duedate ?? "")),

@@ -3,7 +3,8 @@ import axios from "axios";
 import { z } from "zod";
 import { cacheGet, cacheSet, cacheInvalidatePrefix } from "../cache.js";
 import { aggregateSummary, issueToRow } from "../aggregate.js";
-import { aggregateHomeDashboard, type HomeWorklog } from "../homeAggregate.js";
+import { aggregateHomeDashboard, homeActiveIssueStatuses } from "../homeAggregate.js";
+import { fetchHomeWeekWorklogs } from "../homeWorklogs.js";
 import {
   jiraGetMyself,
   jiraIssueWorklogs,
@@ -192,6 +193,7 @@ export function apiRouter(sessionSecret: string) {
 
   const homeQuery = z.object({
     projects: z.string().optional(),
+    refresh: z.enum(["1", "true"]).optional(),
   });
 
   r.get("/home/dashboard", async (req, res) => {
@@ -230,58 +232,46 @@ export function apiRouter(sessionSecret: string) {
       : [];
     const jql = `${projectJqlPrefix(projectKeys)}assignee = currentUser() AND resolution is empty ORDER BY updated DESC`;
 
+    const activeStatuses = homeActiveIssueStatuses();
+    const activeIssuesJql =
+      activeStatuses.length > 0
+        ? `${projectJqlPrefix(projectKeys)}assignee = currentUser() AND ${jqlStatusIn(activeStatuses)} ORDER BY updated DESC`
+        : `${projectJqlPrefix(projectKeys)}assignee = currentUser() ORDER BY updated DESC`;
+
     const weekStart = workWeekStart();
     const weekEnd = workWeekEndExclusive(weekStart);
-    const { from: weekFrom, to: weekTo } = workWeekDateRange(weekStart);
-    const worklogJql = `${projectJqlPrefix(projectKeys)}worklogAuthor = currentUser() AND worklogDate >= "${weekFrom}" AND worklogDate <= "${weekTo}" ORDER BY updated DESC`;
+    const { from: weekFrom } = workWeekDateRange(weekStart);
 
     const cacheKey = `home:${jira.baseUrl}:${accountId}:${projectKeys.join(",")}:${weekFrom}`;
-    const cached = cacheGet<unknown>(cacheKey);
-    if (cached) {
-      res.json(cached);
-      return;
+    const skipCache = q.data.refresh === "1" || q.data.refresh === "true";
+    if (!skipCache) {
+      const cached = cacheGet<unknown>(cacheKey);
+      if (cached) {
+        res.json(cached);
+        return;
+      }
     }
 
     try {
-      const issues = await fetchAllIssuesForJql(client, jql, 500);
+      const [issues, activeIssues] = await Promise.all([
+        fetchAllIssuesForJql(client, jql, 500),
+        fetchAllIssuesForJql(client, activeIssuesJql, 50),
+      ]);
 
-      const fromMs = weekStart.getTime();
-      const toMs = weekEnd.getTime();
-      const worklogs: HomeWorklog[] = [];
+      const worklogs = await fetchHomeWeekWorklogs(client, accountId, weekStart, weekEnd);
 
-      try {
-        const worklogIssues = await fetchAllIssuesForJql(
-          client,
-          worklogJql,
-          200,
-          ["summary", "status", "issuetype", "assignee"]
-        );
-        for (const issue of worklogIssues) {
-          try {
-            const wl = await jiraIssueWorklogs(client, issue.id);
-            for (const w of wl.worklogs) {
-              const t = Date.parse(w.started);
-              if (t < fromMs || t >= toMs) continue;
-              worklogs.push({
-                started: w.started,
-                timeSpentSeconds: w.timeSpentSeconds,
-                authorAccountId: w.author.accountId,
-              });
-            }
-          } catch {
-            /* skip per-issue worklog errors */
-          }
-        }
-      } catch {
-        /* worklog JQL optional — dashboard still loads without time data */
-      }
-
-      const payload = aggregateHomeDashboard(issues, worklogs, accountId, {
-        displayName: jira.displayName,
-        email: jira.email,
-        avatarUrl: jira.avatarUrl,
-      });
-      cacheSet(cacheKey, payload, 90_000);
+      const payload = aggregateHomeDashboard(
+        issues,
+        worklogs,
+        accountId,
+        {
+          displayName: jira.displayName,
+          email: jira.email,
+          avatarUrl: jira.avatarUrl,
+        },
+        activeIssues
+      );
+      cacheSet(cacheKey, payload, 30_000);
       res.json(payload);
     } catch (e: unknown) {
       res.status(502).json({ error: upstreamError("Home dashboard failed", e) });

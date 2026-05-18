@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
-import { projectQuery } from "../components/FiltersBar";
 import { DueDateList } from "../components/home/DueDateList";
 import { HomeProjectFilter } from "../components/home/HomeProjectFilter";
 import { ProfileHeader } from "../components/home/ProfileHeader";
@@ -23,12 +22,15 @@ export function HomePage() {
   const [loadingDash, setLoadingDash] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (opts?: { refresh?: boolean }) => {
     setLoadingDash(true);
     setError(null);
     try {
-      const q = projectQuery(projectKeys);
-      const dash = await api<HomeDashboard>(`/api/home/dashboard${q ? `?${q.slice(1)}` : ""}`);
+      const params = new URLSearchParams();
+      if (projectKeys.length) params.set("projects", projectKeys.join(","));
+      if (opts?.refresh) params.set("refresh", "1");
+      const qs = params.toString();
+      const dash = await api<HomeDashboard>(`/api/home/dashboard${qs ? `?${qs}` : ""}`);
       setData(dash);
     } catch (e) {
       setData(null);
@@ -58,6 +60,12 @@ export function HomePage() {
 
   useEffect(() => {
     void loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    const onFocus = () => void loadDashboard({ refresh: true });
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [loadDashboard]);
 
   function toggleProjectChip(key: string) {
@@ -163,7 +171,7 @@ function TestingSection({ testing }: { testing: HomeDashboard["testing"] }) {
 function ActiveIssuesSection({ issues }: { issues: IssueRow[] }) {
   return (
     <div className="lg:col-span-2">
-      <WidgetCard title="My active issues" subtitle="Unresolved tickets assigned to you">
+      <WidgetCard title="My active issues" subtitle="Open and in-progress tickets assigned to you">
         <IssueTable
           issues={issues}
           columns={["status", "type", "priority", "project", "updated"]}
