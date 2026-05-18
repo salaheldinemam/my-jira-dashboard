@@ -1,3 +1,163 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --app-bg: 248 250 252;
+    --app-surface: 255 255 255;
+    --app-surface-muted: 241 245 249;
+    --app-border: 226 232 240;
+    --app-text: 15 23 42;
+    --app-text-secondary: 71 85 105;
+    --app-text-muted: 100 116 139;
+    --app-header: 255 255 255;
+    --app-track: 226 232 240;
+    --app-chip: 241 245 249;
+  }
+
+  html.dark {
+    --app-bg: 2 6 23;
+    --app-surface: 15 23 42;
+    --app-surface-muted: 30 41 59;
+    --app-border: 30 41 59;
+    --app-text: 241 245 249;
+    --app-text-secondary: 203 213 225;
+    --app-text-muted: 148 163 184;
+    --app-header: 15 23 42;
+    --app-track: 30 41 59;
+    --app-chip: 30 41 59;
+  }
+
+  body {
+    @apply antialiased;
+    background-color: rgb(var(--app-bg));
+    color: rgb(var(--app-text));
+  }
+}
+
+@layer components {
+  .app-page {
+    @apply min-h-screen flex flex-col;
+    background-color: rgb(var(--app-bg));
+    color: rgb(var(--app-text));
+  }
+
+  .app-header {
+    @apply border-b backdrop-blur sticky top-0 z-10;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-header) / 0.85);
+  }
+
+  .app-card {
+    @apply rounded-xl border p-4;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-surface) / 0.92);
+  }
+
+  .app-card-muted {
+    @apply rounded-xl border p-4;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-surface-muted) / 0.9);
+  }
+
+  .app-input {
+    @apply rounded-md border px-3 py-2 outline-none focus:border-sky-500;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-surface));
+    color: rgb(var(--app-text));
+  }
+
+  .app-btn-secondary {
+    @apply rounded-lg px-3 py-2 text-sm transition-colors;
+    background-color: rgb(var(--app-chip));
+    color: rgb(var(--app-text-secondary));
+  }
+
+  .app-btn-secondary:hover {
+    background-color: rgb(var(--app-track));
+    color: rgb(var(--app-text));
+  }
+
+  .app-table-wrap {
+    @apply overflow-x-auto rounded-xl border;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-surface));
+  }
+
+  .app-table-head {
+    @apply text-xs uppercase;
+    background-color: rgb(var(--app-surface-muted));
+    color: rgb(var(--app-text-muted));
+  }
+
+  .app-table-row {
+    @apply border-t;
+    border-color: rgb(var(--app-border));
+    background-color: rgb(var(--app-surface));
+    color: rgb(var(--app-text-secondary));
+  }
+
+  .app-table-row:hover {
+    background-color: rgb(var(--app-surface-muted));
+  }
+
+  .app-table-row td {
+    color: inherit;
+  }
+
+  .app-heading {
+    @apply text-2xl font-semibold mb-2;
+    color: rgb(var(--app-text));
+  }
+
+  .app-lead {
+    @apply text-sm mb-6;
+    color: rgb(var(--app-text-muted));
+  }
+}
+
+/* react-datepicker — match app theme */
+.react-datepicker {
+  border: 1px solid rgb(var(--app-border));
+  background-color: rgb(var(--app-surface));
+  color: rgb(var(--app-text));
+  @apply shadow-lg;
+}
+
+.react-datepicker__header {
+  border-color: rgb(var(--app-border));
+  background-color: rgb(var(--app-surface-muted));
+}
+
+.react-datepicker__current-month,
+.react-datepicker-time__header,
+.react-datepicker-year-header {
+  color: rgb(var(--app-text));
+}
+
+.react-datepicker__day-name,
+.react-datepicker__day,
+.react-datepicker__time-name {
+  color: rgb(var(--app-text-secondary));
+}
+
+.react-datepicker__day:hover,
+.react-datepicker__month-text:hover,
+.react-datepicker__quarter-text:hover,
+.react-datepicker__year-text:hover {
+  background-color: rgb(var(--app-track));
+}
+
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  @apply bg-sky-600 text-white;
+}
+
+.react-datepicker__day--disabled {
+  color: rgb(var(--app-text-muted));
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: rgb(var(--app-text-secondary));
+}

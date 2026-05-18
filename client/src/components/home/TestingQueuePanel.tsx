@@ -21,7 +21,7 @@ export function TestingQueuePanel({
 
   return (
     <WidgetCard title="My testing queue" subtitle="Tickets in testing-related statuses">
-      <div className="flex gap-1 mb-4">
+      <div className="flex gap-1 mb-4 p-1 rounded-lg border border-app-border bg-app-surface-muted w-fit">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -29,8 +29,8 @@ export function TestingQueuePanel({
             onClick={() => setTab(t.id)}
             className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
               tab === t.id
-                ? "bg-slate-700 text-white"
-                : "text-slate-400 hover:text-white hover:bg-slate-800"
+                ? "bg-app-surface text-app-text shadow-sm font-medium border border-app-border"
+                : "text-app-text-muted hover:text-app-text"
             }`}
           >
             {t.label} ({t.count})

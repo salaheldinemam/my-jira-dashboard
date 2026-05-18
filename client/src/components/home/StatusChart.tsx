@@ -44,8 +44,8 @@ export function StatusChart({ byStatus }: { byStatus: Record<string, number> }) 
                 className="w-2.5 h-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: s.color }}
               />
-              <span className="text-slate-300 truncate flex-1">{s.label}</span>
-              <span className="text-white font-medium tabular-nums">{s.value}</span>
+              <span className="text-app-text-secondary truncate flex-1">{s.label}</span>
+              <span className="text-app-text font-medium tabular-nums">{s.value}</span>
             </li>
           ))}
         </ul>

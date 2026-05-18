@@ -1,3 +1,4 @@
+import { useUiStore } from "../../store";
 import type { AuthMe } from "../../types";
 
 type ProfileHeaderProps = {
@@ -7,34 +8,60 @@ type ProfileHeaderProps = {
 };
 
 export function ProfileHeader({ me, loading, avatarUrl }: ProfileHeaderProps) {
+  const jiraBaseUrl = useUiStore((s) => s.jiraBaseUrl);
+
   if (loading) {
     return <ProfileSkeleton />;
   }
 
   const name = me?.displayName ?? me?.email ?? "Jira user";
+  const openIssuesUrl = jiraBaseUrl
+    ? `${jiraBaseUrl}/issues/?jql=assignee%20%3D%20currentUser()%20AND%20resolution%20%3D%20Unresolved`
+    : null;
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const imageUrl = avatarUrl ?? me?.avatarUrl;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-gradient-to-br from-slate-900/80 to-slate-900/40 p-6">
+    <div className="app-card p-6">
       <div className="flex items-start gap-4">
         <UserAvatar name={name} imageUrl={imageUrl} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-400">{greeting}</p>
-          <h1 className="text-2xl font-semibold text-white mt-1 truncate">{name}</h1>
-          {me?.email ? <p className="text-sm text-slate-500 mt-1 truncate">{me.email}</p> : null}
-          {me?.baseUrl ? (
-            <a
-              href={me.baseUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-block mt-3 text-sm text-sky-300 hover:text-sky-200"
-            >
-              Open Jira site
-            </a>
-          ) : null}
+          <p className="text-sm text-app-text-muted">{greeting}</p>
+          <h1 className="text-2xl font-semibold text-app-text mt-1 truncate">{name}</h1>
+          {me?.email ? <p className="text-sm text-app-text-muted mt-1 truncate">{me.email}</p> : null}
+          <div className="flex flex-wrap gap-2 mt-3">
+                      {me?.baseUrl ? (
+                          <a
+                              href={me.baseUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 self-center px-1"
+                          >
+                              Open Jira site
+                          </a>
+                      ) : null}
+
+                     {openIssuesUrl ? (
+                          <a href={openIssuesUrl} target="_blank" rel="noreferrer" className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 self-center px-1">
+                         My open issues in JIRA
+                            </a>
+                      ) : null}
+
+
+                      {jiraBaseUrl ? (
+              <a
+                href={`${jiraBaseUrl}/secure/CreateIssue!default.jspa`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-sky-600 hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300 self-center px-1"
+              >
+                Create issue
+              </a>
+            ) : null}
+            
+          </div>
         </div>
       </div>
     </div>
@@ -43,11 +70,11 @@ export function ProfileHeader({ me, loading, avatarUrl }: ProfileHeaderProps) {
 
 function ProfileSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 animate-pulse flex gap-4">
-      <div className="w-14 h-14 rounded-full bg-slate-800 shrink-0" />
+    <div className="app-card p-6 animate-pulse flex gap-4">
+      <div className="w-14 h-14 rounded-full bg-app-surface-muted shrink-0" />
       <div className="flex-1 space-y-2">
-        <div className="h-4 w-48 bg-slate-800 rounded" />
-        <div className="h-6 w-32 bg-slate-800 rounded" />
+        <div className="h-4 w-48 bg-app-surface-muted rounded" />
+        <div className="h-6 w-32 bg-app-surface-muted rounded" />
       </div>
     </div>
   );
@@ -61,7 +88,7 @@ function UserAvatar({ name, imageUrl }: { name: string; imageUrl?: string }) {
       <img
         src={imageUrl}
         alt=""
-        className="w-14 h-14 rounded-full border-2 border-slate-700 object-cover shrink-0 bg-slate-800"
+        className="w-14 h-14 rounded-full border-2 border-app-border object-cover shrink-0 bg-app-surface-muted"
         referrerPolicy="no-referrer"
       />
     );
@@ -69,7 +96,7 @@ function UserAvatar({ name, imageUrl }: { name: string; imageUrl?: string }) {
 
   return (
     <div
-      className="w-14 h-14 rounded-full border-2 border-slate-700 shrink-0 bg-slate-800 flex items-center justify-center text-lg font-semibold text-sky-200"
+      className="w-14 h-14 rounded-full border-2 border-app-border shrink-0 bg-app-surface-muted flex items-center justify-center text-lg font-semibold text-sky-600 dark:text-sky-300"
       aria-hidden
     >
       {initials}

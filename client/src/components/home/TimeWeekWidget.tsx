@@ -14,9 +14,9 @@ export function TimeWeekWidget({
 
   return (
     <WidgetCard title="Time this week" subtitle="Hours you logged (Sun–Thu)">
-      <div className="text-3xl font-semibold text-white mb-4">
+      <div className="text-3xl font-semibold text-app-text mb-4">
         {totalHours}
-        <span className="text-lg text-slate-400 font-normal ml-1">h</span>
+        <span className="text-lg text-slate-600 dark:text-slate-400 font-normal ml-1">h</span>
       </div>
       <div className="flex items-end gap-2 h-28">
         {byDay.map((d, i) => {

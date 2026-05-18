@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { clearJiraConnection, JiraConnection, loadJiraConnection, saveJiraConnection } from "../jiraSettings";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { useUiStore } from "../store";
 
 type AuthMeResponse = {
@@ -129,20 +130,26 @@ export function SettingsPage() {
   }
 
   if (loading) {
-    return <div className="text-slate-400">Loading settings…</div>;
+    return <div className="text-slate-600 dark:text-slate-400">Loading settings…</div>;
   }
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold text-white mb-2">Settings</h1>
-      <p className="text-slate-400 text-sm mb-6">
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Settings</h1>
+      <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
         Sign in with your Atlassian account to access Jira. Your session is stored securely on the server.
       </p>
 
+      <section className="app-card p-5 mb-6">
+        <h2 className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">Appearance</h2>
+        <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">Choose light, dark, or match your system setting.</p>
+        <ThemeSwitcher />
+      </section>
+
       {me?.connected ? (
-        <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/30 p-5 space-y-4">
-          <div className="text-emerald-400 font-medium">Connected to Jira</div>
-          <dl className="text-sm space-y-2 text-slate-300">
+        <div className="rounded-xl border border-emerald-300 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/30 p-5 space-y-4">
+          <div className="text-emerald-600 dark:text-emerald-400 font-medium">Connected to Jira</div>
+          <dl className="text-sm space-y-2 text-slate-700 dark:text-slate-300">
             <div>
               <dt className="text-slate-500">Site</dt>
               <dd>{me.baseUrl}</dd>
@@ -160,16 +167,16 @@ export function SettingsPage() {
             type="button"
             onClick={disconnect}
             disabled={saving}
-            className="rounded-md border border-slate-600 px-4 py-2 text-slate-200 hover:bg-slate-800 disabled:opacity-50 transition-colors"
+            className="rounded-md border border-slate-400 dark:border-slate-600 px-4 py-2 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-app-surface-muted disabled:opacity-50 transition-colors"
           >
             Disconnect
           </button>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5 space-y-4">
+        <div className="app-card p-5 space-y-4">
           {me?.oauthAvailable !== false ? (
             <>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 You will be redirected to Atlassian to approve access to your Jira Cloud site.
               </p>
               <button
@@ -181,7 +188,7 @@ export function SettingsPage() {
               </button>
             </>
           ) : (
-            <p className="text-sm text-amber-400">
+            <p className="text-sm text-amber-700 dark:text-amber-400">
               OAuth is not configured. Ask your admin to set ATLASSIAN_CLIENT_ID, ATLASSIAN_CLIENT_SECRET, and
               ATLASSIAN_REDIRECT_URI, or use the API token option below.
             </p>
@@ -190,42 +197,42 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => setShowAdvanced((v) => !v)}
-            className="text-sm text-slate-400 hover:text-slate-200 underline"
+            className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-800 dark:text-slate-200 underline"
           >
             {showAdvanced ? "Hide" : "Use API token instead (advanced)"}
           </button>
 
           {showAdvanced && (
-            <form onSubmit={onBasicSubmit} className="space-y-4 pt-2 border-t border-slate-800">
+            <form onSubmit={onBasicSubmit} className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
               <label className="block">
-                <div className="mb-1 text-sm text-slate-300">Jira site URL</div>
+                <div className="mb-1 text-sm text-slate-700 dark:text-slate-300">Jira site URL</div>
                 <input
                   required
                   type="url"
                   value={basicForm.baseUrl}
                   onChange={(e) => setBasicForm((prev) => ({ ...prev, baseUrl: e.target.value }))}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                   placeholder="https://your-domain.atlassian.net"
                 />
               </label>
               <label className="block">
-                <div className="mb-1 text-sm text-slate-300">Email</div>
+                <div className="mb-1 text-sm text-slate-700 dark:text-slate-300">Email</div>
                 <input
                   required
                   type="email"
                   value={basicForm.email}
                   onChange={(e) => setBasicForm((prev) => ({ ...prev, email: e.target.value }))}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                 />
               </label>
               <label className="block">
-                <div className="mb-1 text-sm text-slate-300">API token</div>
+                <div className="mb-1 text-sm text-slate-700 dark:text-slate-300">API token</div>
                 <input
                   required
                   type="password"
                   value={basicForm.apiToken}
                   onChange={(e) => setBasicForm((prev) => ({ ...prev, apiToken: e.target.value }))}
-                  className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                 />
               </label>
               <button
@@ -240,8 +247,8 @@ export function SettingsPage() {
         </div>
       )}
 
-      {error && <div className="mt-4 text-sm text-rose-400">{error}</div>}
-      {success && <div className="mt-4 text-sm text-emerald-400">{success}</div>}
+      {error && <div className="mt-4 text-sm text-rose-600 dark:text-rose-400">{error}</div>}
+      {success && <div className="mt-4 text-sm text-emerald-600 dark:text-emerald-400">{success}</div>}
     </div>
   );
 }

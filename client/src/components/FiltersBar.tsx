@@ -75,10 +75,10 @@ export function FiltersBar({
   }, []);
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 mb-6 space-y-3">
+    <div className="app-card-muted p-4 mb-6 space-y-3">
       {periodMode !== undefined && onPeriodModeChange && (
         <div>
-          <div className="text-xs text-slate-400 mb-2">Period</div>
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">Period</div>
           <div className="flex flex-wrap gap-2">
             {PERIOD_MODES.map(({ id, label }) => (
               <button
@@ -87,8 +87,8 @@ export function FiltersBar({
                 onClick={() => onPeriodModeChange(id)}
                 className={`text-xs px-2 py-1 rounded-md border transition-colors ${
                   periodMode === id
-                    ? "border-sky-500 bg-sky-950 text-sky-200"
-                    : "border-slate-700 text-slate-400 hover:border-slate-500"
+                    ? "border-sky-500 bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-700 dark:text-sky-200"
+                    : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-500"
                 }`}
               >
                 {label}
@@ -99,30 +99,30 @@ export function FiltersBar({
       )}
       {showDateFilters && (
         <div className="flex flex-wrap gap-4 items-end">
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-400">
             From
             <DatePicker
               selected={parseDateOrNull(dateFrom)}
               onChange={(date) => setDateRange(toIsoDateOrCurrent(date, dateFrom), dateTo)}
               dateFormat="yyyy-MM-dd"
-              className="bg-slate-950 border border-slate-700 rounded-md px-2 py-1.5 text-slate-100"
+              className="app-input px-2 py-1.5"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-400">
             To
             <DatePicker
               selected={parseDateOrNull(dateTo)}
               onChange={(date) => setDateRange(dateFrom, toIsoDateOrCurrent(date, dateTo))}
               dateFormat="yyyy-MM-dd"
-              className="bg-slate-950 border border-slate-700 rounded-md px-2 py-1.5 text-slate-100"
+              className="app-input px-2 py-1.5"
             />
           </label>
         </div>
       )}
       <div>
-        <div className="text-xs text-slate-400 mb-2">Projects (optional — empty = all)</div>
+        <div className="text-xs text-slate-600 dark:text-slate-400 mb-2">Projects (optional — empty = all)</div>
         {projectsLoading && <div className="text-xs text-slate-500 mb-3">Loading projects...</div>}
-        {err && <div className="text-amber-400 text-sm mb-2">{err}</div>}
+        {err && <div className="text-amber-700 dark:text-amber-400 text-sm mb-2">{err}</div>}
         <div className="flex flex-wrap gap-2 mb-3">
           {projects.map((p) => (
             <button
@@ -131,8 +131,8 @@ export function FiltersBar({
               onClick={() => toggleProject(p.key)}
               className={`text-xs px-2 py-1 rounded-md border transition-colors ${
                 projectKeys.includes(p.key)
-                  ? "border-sky-500 bg-sky-950 text-sky-200"
-                  : "border-slate-700 text-slate-400 hover:border-slate-500"
+                  ? "border-sky-500 bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-700 dark:text-sky-200"
+                  : "border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-500"
               }`}
             >
               {p.key}

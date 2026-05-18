@@ -56,8 +56,8 @@ export function TimeTrackingPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-2">Time tracking</h1>
-      <p className="text-slate-400 text-sm mb-4">Effort by team member for worklogs in the selected period.</p>
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Time tracking</h1>
+      <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">Effort by team member for worklogs in the selected period.</p>
       <FiltersBar
         onApply={() => void loadTimeTracking()}
         applyLabel="Load time tracking"
@@ -67,16 +67,16 @@ export function TimeTrackingPage() {
         showDateFilters={dateMode === "custom"}
       />
       {loading && <div className="text-slate-500">Loading…</div>}
-      {error && <div className="text-red-400">{error}</div>}
+      {error && <div className="text-red-600 dark:text-red-400">{error}</div>}
       {!loading && !error && !hasLoaded && (
         <div className="text-slate-500 text-sm">
           Select a period{dateMode === "custom" ? " and date range" : ""}, then click &quot;Load time tracking&quot;.
         </div>
       )}
       {!loading && !error && (
-        <div className="overflow-x-auto rounded-xl border border-slate-800">
+        <div className="app-table-wrap">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+            <thead className="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 uppercase text-xs">
               <tr>
                 <th className="px-4 py-3">Employee</th>
                 <th className="px-4 py-3">Total hours</th>
@@ -87,15 +87,15 @@ export function TimeTrackingPage() {
               {rows.map((r) => (
                 <Fragment key={r.employee}>
                   <tr
-                    className="border-t border-slate-800 hover:bg-slate-900/80 cursor-pointer"
+                    className="border-t border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900/80 cursor-pointer"
                     onClick={() => setOpen(open === r.employee ? null : r.employee)}
                   >
-                    <td className="px-4 py-3 text-white font-medium">{r.employee}</td>
+                    <td className="px-4 py-3 text-slate-900 dark:text-white font-medium">{r.employee}</td>
                     <td className="px-4 py-3">{r.totalLoggedHours}h</td>
                     <td className="px-4 py-3">{r.tasksCount}</td>
                   </tr>
                   {open === r.employee && (
-                    <tr className="bg-slate-950/80">
+                    <tr className="bg-white dark:bg-slate-950/80">
                       <td colSpan={3} className="px-4 pb-4">
                         <div className="text-xs text-slate-500 mb-2">Tasks</div>
                         <table className="w-full text-xs">
@@ -109,12 +109,12 @@ export function TimeTrackingPage() {
                           </thead>
                           <tbody>
                             {r.tasks.map((t) => (
-                              <tr key={t.key} className="text-slate-200 border-t border-slate-800">
+                              <tr key={t.key} className="text-slate-800 dark:text-slate-200 border-t border-slate-200 dark:border-slate-800">
                                 <td className="py-1.5 pr-2 font-mono">
                                   <JiraIssueLink
                                     issueKey={t.key}
                                     text={`${t.key} - ${t.summary}`}
-                                    className="text-sky-200 hover:underline"
+                                    className="text-sky-700 dark:text-sky-200 hover:underline"
                                   />
                                 </td>
                                 <td className="py-1.5 pr-2">{t.hours}h</td>

@@ -15,15 +15,15 @@ export function IssueTable({
   emptyMessage = "No issues",
 }: IssueTableProps) {
   if (issues.length === 0) {
-    return <p className="text-sm text-slate-500 py-4">{emptyMessage}</p>;
+    return <p className="text-sm text-app-text-muted py-4">{emptyMessage}</p>;
   }
 
   const cols = columns ?? [];
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-800">
+    <div className="app-table-wrap">
       <table className="w-full text-sm">
-        <thead className="bg-slate-900 text-xs uppercase text-slate-500">
+        <thead className="app-table-head w-full">
           <tr>
             <th className="px-3 py-2 text-left">Ticket</th>
             {cols.includes("status") && <th className="px-3 py-2 text-left">Status</th>}
@@ -36,17 +36,17 @@ export function IssueTable({
         </thead>
         <tbody>
           {issues.map((i) => (
-            <tr key={i.key} className="border-t border-slate-800">
-              <td className="px-3 py-2 font-mono text-sky-200 max-w-md">
+            <tr key={i.key} className="app-table-row">
+              <td className="px-3 py-2 font-mono text-sky-800 dark:text-sky-200 max-w-md">
                 <JiraIssueLink issueKey={i.key} text={`${i.key} — ${i.summary}`} className="hover:underline" />
               </td>
-              {cols.includes("status") && <td className="px-3 py-2 text-slate-400">{i.status}</td>}
-              {cols.includes("type") && <td className="px-3 py-2 text-slate-400">{i.issuetype}</td>}
-              {cols.includes("priority") && <td className="px-3 py-2 text-slate-400">{i.priority || "—"}</td>}
-              {cols.includes("project") && <td className="px-3 py-2 text-slate-400">{i.projectKey ?? "—"}</td>}
-              {cols.includes("duedate") && <td className="px-3 py-2 text-slate-500 text-xs">{i.duedate ?? "—"}</td>}
+              {cols.includes("status") && <td className="px-3 py-2">{i.status}</td>}
+              {cols.includes("type") && <td className="px-3 py-2">{i.issuetype}</td>}
+              {cols.includes("priority") && <td className="px-3 py-2">{i.priority || "—"}</td>}
+              {cols.includes("project") && <td className="px-3 py-2">{i.projectKey ?? "—"}</td>}
+              {cols.includes("duedate") && <td className="px-3 py-2 text-app-text-muted text-xs">{i.duedate ?? "—"}</td>}
               {cols.includes("updated") && (
-                <td className="px-3 py-2 text-slate-500 text-xs whitespace-nowrap">{formatUpdated(i.updated)}</td>
+                <td className="px-3 py-2 text-app-text-muted text-xs whitespace-nowrap">{formatUpdated(i.updated)}</td>
               )}
             </tr>
           ))}

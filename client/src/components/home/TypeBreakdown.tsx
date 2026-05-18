@@ -10,7 +10,7 @@ export function TypeBreakdown({ byType }: { byType: Record<string, number> }) {
   if (entries.length === 0) {
     return (
       <WidgetCard title="Issue types" subtitle="Story, bug, task, and more">
-        <p className="text-sm text-slate-500">No type data.</p>
+        <p className="text-sm text-app-text-muted">No type data.</p>
       </WidgetCard>
     );
   }
@@ -25,10 +25,10 @@ export function TypeBreakdown({ byType }: { byType: Record<string, number> }) {
             <li key={label}>
               <div>
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-300">{label}</span>
-                  <span className="text-white font-medium tabular-nums">{value}</span>
+                  <span className="text-app-text-secondary">{label}</span>
+                  <span className="text-app-text font-medium tabular-nums">{value}</span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                <div className="h-2 rounded-full bg-app-border overflow-hidden">
                   <div className="h-full rounded-full transition-all" style={{ width, backgroundColor: color }} />
                 </div>
               </div>

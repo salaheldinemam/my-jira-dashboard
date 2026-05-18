@@ -29,12 +29,12 @@ export function ProjectChips({
               onClick={() => onToggle(p.key)}
               className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
                 active
-                  ? "bg-sky-900/50 border-sky-600 text-sky-100"
-                  : "bg-slate-800/60 border-slate-700 text-slate-300 hover:border-slate-500"
+                  ? "bg-sky-100 border-sky-600 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100"
+                  : "bg-slate-100 dark:bg-app-surface-muted/60 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500"
               }`}
             >
               <span className="font-medium">{p.key}</span>
-              <span className="text-slate-400 ml-1.5">{p.count}</span>
+              <span className="text-slate-600 dark:text-slate-400 ml-1.5">{p.count}</span>
             </button>
           );
         })}

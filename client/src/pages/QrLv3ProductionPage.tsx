@@ -36,10 +36,10 @@ export function QrLv3ProductionPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-2">QR — LV3 production tickets</h1>
-      <p className="text-slate-400 text-sm mb-6">
-        Project <span className="text-slate-300">QR</span>, type{" "}
-        <span className="text-slate-300">LV3 Production Ticket</span>, excluding statuses Passed, Released,
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">QR — LV3 production tickets</h1>
+      <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+        Project <span className="text-slate-700 dark:text-slate-300">QR</span>, type{" "}
+        <span className="text-slate-700 dark:text-slate-300">LV3 Production Ticket</span>, excluding statuses Passed, Released,
         and Cancelled. Grouped by assignee.
       </p>
       <div className="mb-6">
@@ -53,7 +53,7 @@ export function QrLv3ProductionPage() {
         </button>
       </div>
       {loading && <div className="text-slate-500">Loading…</div>}
-      {error && <div className="text-red-400">{error}</div>}
+      {error && <div className="text-red-600 dark:text-red-400">{error}</div>}
       {!loading && !error && !hasLoaded && (
         <div className="text-slate-500 text-sm">Click &quot;Load tickets&quot; to fetch from Jira.</div>
       )}
@@ -63,30 +63,30 @@ export function QrLv3ProductionPage() {
             const issues = byAssignee[name] ?? [];
             const expanded = openSections[name] ?? false;
             return (
-              <div key={name} className="rounded-xl border border-slate-800 bg-slate-900/40 overflow-hidden">
+              <div key={name} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/40 overflow-hidden">
                 <button
                   type="button"
-                  className="w-full text-left px-4 py-3 flex justify-between items-center gap-3 hover:bg-slate-800/60"
+                  className="w-full text-left px-4 py-3 flex justify-between items-center gap-3 hover:bg-slate-100 dark:hover:bg-app-surface-muted/60"
                   onClick={() => setOpenSections((prev) => ({ ...prev, [name]: !expanded }))}
                 >
-                  <span className="font-medium text-white flex items-center gap-2 min-w-0">
+                  <span className="font-medium text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
                     <span className="text-slate-500 shrink-0">{expanded ? "▾" : "▸"}</span>
                     <span className="truncate">{name}</span>
                   </span>
                   <span className="text-xs text-slate-500 shrink-0">{issues.length} tickets</span>
                 </button>
                 {expanded && (
-                  <div className="border-t border-slate-800 px-4 py-3 bg-slate-950/50">
+                  <div className="border-t border-slate-200 dark:border-slate-800 px-4 py-3 bg-white dark:bg-slate-950/50">
                     <ul className="space-y-2 text-sm">
                       {issues.map((issue) => (
                         <li
                           key={issue.key}
-                          className="flex flex-wrap gap-2 text-slate-300 items-baseline"
+                          className="flex flex-wrap gap-2 text-slate-700 dark:text-slate-300 items-baseline"
                         >
                           <JiraIssueLink
                             issueKey={issue.key}
                             text={`${issue.key} - ${issue.summary}`}
-                            className="font-mono text-sky-200 hover:underline shrink-0"
+                            className="font-mono text-sky-700 dark:text-sky-200 hover:underline shrink-0"
                           />
                           <span className="text-slate-500">({issue.status})</span>
                         </li>

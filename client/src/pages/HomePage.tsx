@@ -5,13 +5,11 @@ import { DueDateList } from "../components/home/DueDateList";
 import { HomeProjectFilter } from "../components/home/HomeProjectFilter";
 import { ProfileHeader } from "../components/home/ProfileHeader";
 import { ProjectChips } from "../components/home/ProjectChips";
-import { QuickActions } from "../components/home/QuickActions";
 import { StatCard } from "../components/home/StatCard";
 import { StatusChart } from "../components/home/StatusChart";
 import { TestingQueuePanel } from "../components/home/TestingQueuePanel";
 import { TimeWeekWidget } from "../components/home/TimeWeekWidget";
 import { TypeBreakdown } from "../components/home/TypeBreakdown";
-import { WeeklyReportPanel } from "../components/home/WeeklyReportPanel";
 import { WidgetCard } from "../components/home/WidgetCard";
 import { IssueTable } from "../components/IssueTable";
 import { useUiStore } from "../store";
@@ -73,7 +71,7 @@ export function HomePage() {
     <div className="space-y-6">
       <ProfileHeader me={me} loading={loadingMe} avatarUrl={data?.user.avatarUrl} />
       <HomeProjectFilter />
-      {error ? <p className="text-red-400 text-sm">{error}</p> : null}
+      {error ? <p className="text-red-600 dark:text-red-400 text-sm">{error}</p> : null}
       {loadingDash && !data ? <p className="text-slate-500 text-sm">Loading your dashboard…</p> : null}
       {data ? (
         <HomeDashboardContent
@@ -83,8 +81,6 @@ export function HomePage() {
           onToggleProject={toggleProjectChip}
         />
           ) : null}
-
-          <QuickActions />
     </div>
   );
 }
@@ -113,7 +109,6 @@ function HomeDashboardContent({
         <TestingSection testing={data.testing} />
         <ActiveIssuesSection issues={data.issues} />
       </div>
-      <WeeklyReportPanel data={data} />
     </>
   );
 }

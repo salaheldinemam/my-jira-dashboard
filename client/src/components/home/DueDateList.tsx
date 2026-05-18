@@ -28,8 +28,14 @@ function DueSection({
   items: IssueRow[];
   tone: "danger" | "warning";
 }) {
-  const border = tone === "danger" ? "border-rose-900/50" : "border-amber-900/50";
-  const badge = tone === "danger" ? "bg-rose-950/50 text-rose-200" : "bg-amber-950/50 text-amber-200";
+  const border =
+    tone === "danger"
+      ? "border-rose-200 dark:border-rose-900/50"
+      : "border-amber-200 dark:border-amber-900/50";
+  const badge =
+    tone === "danger"
+      ? "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-200"
+      : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200";
 
   return (
     <div>
@@ -42,10 +48,14 @@ function DueSection({
         <ul className={`space-y-2 rounded-lg border ${border} p-2`}>
           {items.map((i) => (
             <li key={i.key} className="text-sm">
-              <JiraIssueLink issueKey={i.key} text={i.key} className="text-sky-300 font-mono hover:underline" />
-              <span className="text-slate-400 ml-2 truncate">{i.summary}</span>
+              <JiraIssueLink
+                issueKey={i.key}
+                text={i.key}
+                className="text-sky-600 dark:text-sky-300 font-mono hover:underline"
+              />
+              <span className="text-app-text-secondary ml-2 truncate">{i.summary}</span>
               {i.duedate && (
-                <span className="block text-xs text-slate-500 mt-0.5">Due {i.duedate}</span>
+                <span className="block text-xs text-app-text-muted mt-0.5">Due {i.duedate}</span>
               )}
             </li>
           ))}

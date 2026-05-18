@@ -34,7 +34,7 @@ function RequireJiraAuth() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400">
+      <div className="app-page flex items-center justify-center text-app-text-muted">
         Loading…
       </div>
     );

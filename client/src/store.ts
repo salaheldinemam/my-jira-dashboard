@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { applyTheme, type ThemeMode } from "./theme";
 
 export type StatusMappingState = Record<string, string[]>;
 
 type UiState = {
+  theme: ThemeMode;
+  setTheme: (theme: ThemeMode) => void;
   projectKeys: string[];
   setProjectKeys: (keys: string[]) => void;
   dateFrom: string;
@@ -24,6 +27,11 @@ function fmt(d: Date) {
 export const useUiStore = create<UiState>()(
   persist(
     (set) => ({
+      theme: "system",
+      setTheme: (theme) => {
+        applyTheme(theme);
+        set({ theme });
+      },
       projectKeys: [],
       setProjectKeys: (keys) => set({ projectKeys: keys }),
       dateFrom: fmt(weekAgo),
@@ -32,6 +40,11 @@ export const useUiStore = create<UiState>()(
       jiraBaseUrl: null,
       setJiraBaseUrl: (baseUrl) => set({ jiraBaseUrl: baseUrl }),
     }),
-    { name: "jira-insights-ui" }
+    {
+      name: "jira-insights-ui",
+      onRehydrateStorage: () => (state) => {
+        applyTheme(state?.theme ?? "system");
+      },
+    }
   )
 );

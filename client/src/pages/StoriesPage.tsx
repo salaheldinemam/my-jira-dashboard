@@ -64,11 +64,11 @@ export function StoriesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-white mb-2">Stories &amp; enhancements</h1>
-      <p className="text-slate-400 text-sm mb-6">Open and in-progress stories and enhancements.</p>
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">Stories &amp; enhancements</h1>
+      <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">Open and in-progress stories and enhancements.</p>
       <FiltersBar onApply={loadStories} applyLabel="Load stories" showDateFilters={false} />
       {loading && <div className="text-slate-500">Loading…</div>}
-      {error && <div className="text-red-400">{error}</div>}
+      {error && <div className="text-red-600 dark:text-red-400">{error}</div>}
       {!loading && !error && !hasLoaded && (
         <div className="text-slate-500 text-sm">Set your filters, then click "Load stories".</div>
       )}
@@ -88,19 +88,19 @@ export function StoriesPage() {
               >
                 <span>{collapsedSections[group] ? "▸" : "▾"}</span>
                 <span>{group}</span>
-                <span className="text-slate-400">({issues.length})</span>
+                <span className="text-slate-600 dark:text-slate-400">({issues.length})</span>
               </button>
               {!collapsedSections[group] && (
                 <ul className="space-y-2">
                   {issues.map((i) => (
                     <li
                       key={i.key}
-                      className="rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 flex flex-wrap gap-2 text-sm"
+                      className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-900/50 px-3 py-2 flex flex-wrap gap-2 text-sm"
                     >
                       <JiraIssueLink
                         issueKey={i.key}
                         text={`${i.key} - ${i.summary}`}
-                        className="font-mono text-sky-200 hover:underline"
+                        className="font-mono text-sky-700 dark:text-sky-200 hover:underline"
                       />
                       <span className="text-slate-500">{i.assignee}</span>
                       <span className="text-slate-500">{i.status}</span>
