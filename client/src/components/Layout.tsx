@@ -11,6 +11,7 @@ const nav = [
   { to: "/workload", label: "Workload" },
   { to: "/testing", label: "Testing" },
   { to: "/stories", label: "Stories" },
+  { to: "/bugs", label: "Bugs" },
   { to: "/qr-lv3", label: "LV3 Tickets" },
   { to: "/settings", label: "Settings" },
 ];

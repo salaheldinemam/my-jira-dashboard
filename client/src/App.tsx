@@ -6,6 +6,7 @@ import { TimeTrackingPage } from "./pages/TimeTrackingPage";
 import { WorkloadPage } from "./pages/WorkloadPage";
 import { TestingPage } from "./pages/TestingPage";
 import { StoriesPage } from "./pages/StoriesPage";
+import { BugsPage } from "./pages/BugsPage";
 import { QrLv3ProductionPage } from "./pages/QrLv3ProductionPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { api } from "./api";
@@ -57,6 +58,7 @@ export function App() {
           <Route path="workload" element={<WorkloadPage />} />
           <Route path="testing" element={<TestingPage />} />
           <Route path="stories" element={<StoriesPage />} />
+          <Route path="bugs" element={<BugsPage />} />
           <Route path="qr-lv3" element={<QrLv3ProductionPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

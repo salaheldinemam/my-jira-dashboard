@@ -492,6 +492,80 @@ export function apiRouter(sessionSecret: string) {
     }
   });
 
+  const bugsQuery = z.object({
+    projects: z.string().optional(),
+  });
+
+    const BUG_ACTIVE_STATUSES: string[] = [
+        "Open",
+        "Reopened",
+        "In Progress",
+        "Testing Failed",
+        "Under Investigation",
+        "Postponed",
+        "Blocked",
+        "TO DO",
+        "Done Dev",
+        "New",
+        "Backlog"
+    ];
+
+  r.get("/bugs/by-assignee", async (req, res) => {
+    const client = await requireJira(req);
+    if (!client) {
+      res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
+      return;
+    }
+    const q = bugsQuery.safeParse(req.query);
+    if (!q.success) {
+      res.status(400).json({ error: q.error.flatten() });
+      return;
+    }
+    const projectKeys = q.data.projects
+      ? q.data.projects.split(",").map((k) => k.trim()).filter(Boolean)
+      : [];
+    const jql =
+      `${projectJqlPrefix(projectKeys)}issuetype = Bug` +
+      ` AND ${jqlStatusIn(BUG_ACTIVE_STATUSES)}` +
+      ` ORDER BY assignee, updated DESC`;
+
+    const cacheKey = `bugs:${jql}`;
+    const hit = cacheGet<unknown>(cacheKey);
+    if (hit) {
+      res.json(hit);
+      return;
+    }
+
+    try {
+      const issues = await fetchAllIssuesForJql(client, jql);
+      const byAssignee: Record<string, Record<string, JiraIssue[]>> = {};
+      for (const issue of issues) {
+        const name = issueToRow(issue).assignee;
+        const st =
+          typeof issue.fields.status === "object" && issue.fields.status && "name" in issue.fields.status
+            ? String((issue.fields.status as { name: string }).name)
+            : "Unknown";
+        if (!byAssignee[name]) byAssignee[name] = {};
+        if (!byAssignee[name][st]) byAssignee[name][st] = [];
+        byAssignee[name][st].push(issue);
+      }
+      const serializeBuckets = (b: Record<string, JiraIssue[]>) => {
+        const out: Record<string, ReturnType<typeof issueToRow>[]> = {};
+        for (const [k, iss] of Object.entries(b)) out[k] = iss.map(issueToRow);
+        return out;
+      };
+      const byAssigneeRows: Record<string, ReturnType<typeof serializeBuckets>> = {};
+      for (const [name, b] of Object.entries(byAssignee)) {
+        byAssigneeRows[name] = serializeBuckets(b);
+      }
+      const payload = { byAssignee: byAssigneeRows };
+      cacheSet(cacheKey, payload, 45_000);
+      res.json(payload);
+    } catch (e: unknown) {
+      res.status(502).json({ error: upstreamError("Bugs view failed", e) });
+    }
+  });
+
   const storiesQuery = z.object({
     projects: z.string().optional(),
     groupBy: z.enum(["status", "assignee"]).default("status"),
