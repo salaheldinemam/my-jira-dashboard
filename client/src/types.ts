@@ -37,6 +37,42 @@ export type HomeDashboard = {
   timeThisWeek: { totalHours: number; byDay: { date: string; hours: number }[] };
 };
 
+export type SprintOption = {
+  id: number;
+  name: string;
+  state: string;
+  startDate?: string;
+  endDate?: string;
+  boardId: number;
+  boardName?: string;
+  projectKeys: string[];
+};
+
+export type SprintDashboard = {
+  sprint: { id: number; name: string; state?: string; startDate?: string; endDate?: string };
+  counts: {
+    total: number;
+    done: number;
+    open: number;
+    inProgress: number;
+    readyForTesting: number;
+    underTesting: number;
+    reopened: number;
+    failedTesting: number;
+    unassigned: number;
+    blocked: number;
+  };
+  completionPercent: number;
+  byStatus: Record<string, number>;
+  byType: Record<string, number>;
+  testing: { ready: IssueRow[]; under: IssueRow[]; failed: IssueRow[] };
+  unassigned: IssueRow[];
+  blocked: IssueRow[];
+  issues: IssueRow[];
+  groupedByStatus: Record<string, IssueRow[]>;
+  byAssignee: Record<string, Record<string, IssueRow[]>>;
+};
+
 export type AuthMe = {
   connected: boolean;
   authMode?: "oauth" | "basic";

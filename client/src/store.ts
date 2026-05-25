@@ -9,6 +9,8 @@ type UiState = {
   setTheme: (theme: ThemeMode) => void;
   projectKeys: string[];
   setProjectKeys: (keys: string[]) => void;
+  sprintId: number | null;
+  setSprintId: (id: number | null) => void;
   dateFrom: string;
   dateTo: string;
   setDateRange: (from: string, to: string) => void;
@@ -34,6 +36,8 @@ export const useUiStore = create<UiState>()(
       },
       projectKeys: [],
       setProjectKeys: (keys) => set({ projectKeys: keys }),
+      sprintId: null,
+      setSprintId: (id) => set({ sprintId: id }),
       dateFrom: fmt(weekAgo),
       dateTo: fmt(today),
       setDateRange: (from, to) => set({ dateFrom: from, dateTo: to }),

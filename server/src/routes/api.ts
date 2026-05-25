@@ -19,7 +19,10 @@ import {
   workWeekStart,
 } from "../workWeek.js";
 import { fetchAllIssuesForJql, TESTING_LIST_FIELDS } from "../fetchAllIssues.js";
-import { resolveJiraClient } from "../jiraAuth.js";
+import { resolveJiraClient, resolveJiraClientConfig } from "../jiraAuth.js";
+import { persistSession } from "../persistSession.js";
+import { aggregateSprintDashboard } from "../sprintAggregate.js";
+import { loadOpenSprints } from "../sprintList.js";
 import { getSessionAccountId, sessionHasJira } from "../session.js";
 import {
   DEFAULT_STATUS_MAPPING,
@@ -767,6 +770,116 @@ export function apiRouter(sessionSecret: string) {
       res.json(payload);
     } catch (e: unknown) {
       res.status(502).json({ error: upstreamError("Time tracking failed", e) });
+    }
+  });
+
+  const sprintsQuery = z.object({
+    projects: z.string().min(1),
+  });
+
+  r.get("/sprints", async (req, res) => {
+    const q = sprintsQuery.safeParse(req.query);
+    if (!q.success) {
+      res.status(400).json({ error: "projects query param is required (comma-separated keys)" });
+      return;
+    }
+    const projectKeys = q.data.projects
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (!projectKeys.length) {
+      res.status(400).json({ error: "At least one project key is required" });
+      return;
+    }
+
+    const client = await requireJira(req);
+    if (!client) {
+      res.status(401).json({ error: "Not connected to Jira. Open Settings and sign in with Atlassian." });
+      return;
+    }
+
+    const { config, sessionTouched } = await resolveJiraClientConfig(req.session, sessionSecret);
+    if (sessionTouched) {
+      try {
+        await persistSession(req);
+      } catch (err) {
+        console.error("Failed to persist session after OAuth refresh:", err);
+      }
+    }
+    if (!config) {
+      res.status(401).json({ error: "Not connected to Jira. Open Settings and sign in with Atlassian." });
+      return;
+    }
+
+    const cacheKey = `sprints:${projectKeys.join(",")}`;
+    const cached = cacheGet<unknown>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
+
+    try {
+      const { sprints, source } = await loadOpenSprints(config, projectKeys);
+      const payload = { sprints, source };
+      cacheSet(cacheKey, payload, 60_000);
+      res.json(payload);
+    } catch (e: unknown) {
+      let msg = upstreamError("Failed to load sprints", e);
+      if (axios.isAxiosError(e) && (e.response?.status === 401 || e.response?.status === 403)) {
+        msg +=
+          ". If using Atlassian OAuth, sign out in Settings and sign in again so new board/sprint scopes apply.";
+      }
+      res.status(502).json({ error: msg });
+    }
+  });
+
+  const sprintDashboardQuery = z.object({
+    sprintId: z.coerce.number().int().positive(),
+    projects: z.string().min(1),
+  });
+
+  r.get("/sprint/dashboard", async (req, res) => {
+    const client = await requireJira(req);
+    if (!client) {
+      res.status(401).json({ error: "Jira settings are missing. Open Settings and save your credentials." });
+      return;
+    }
+    const q = sprintDashboardQuery.safeParse(req.query);
+    if (!q.success) {
+      res.status(400).json({ error: "sprintId and projects query params are required" });
+      return;
+    }
+    const projectKeys = q.data.projects
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (!projectKeys.length) {
+      res.status(400).json({ error: "At least one project key is required" });
+      return;
+    }
+
+    const jql = `${projectJqlPrefix(projectKeys)}sprint = ${q.data.sprintId} ORDER BY status ASC, updated DESC`;
+    const cacheKey = `sprint-dash:${q.data.sprintId}:${projectKeys.join(",")}`;
+    const hit = cacheGet<unknown>(cacheKey);
+    if (hit) {
+      res.json(hit);
+      return;
+    }
+
+    try {
+      const issues = await fetchAllIssuesForJql(client, jql);
+      const sprintName =
+        typeof req.query.sprintName === "string" && req.query.sprintName.trim()
+          ? req.query.sprintName.trim()
+          : `Sprint ${q.data.sprintId}`;
+      const payload = aggregateSprintDashboard(issues, {
+        id: q.data.sprintId,
+        name: sprintName,
+      });
+      cacheSet(cacheKey, payload, 45_000);
+      res.json(payload);
+    } catch (e: unknown) {
+      res.status(502).json({ error: upstreamError("Sprint dashboard failed", e) });
     }
   });
 

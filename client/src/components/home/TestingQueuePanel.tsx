@@ -5,10 +5,18 @@ import { WidgetCard } from "./WidgetCard";
 
 type Tab = "ready" | "under" | "failed";
 
+type TableColumn = "status" | "type" | "priority" | "duedate" | "updated" | "project" | "assignee";
+
 export function TestingQueuePanel({
   testing,
+  title = "My testing queue",
+  subtitle = "Tickets in testing-related statuses",
+  tableColumns = ["status", "updated"],
 }: {
   testing: { ready: IssueRow[]; under: IssueRow[]; failed: IssueRow[] };
+  title?: string;
+  subtitle?: string;
+  tableColumns?: TableColumn[];
 }) {
   const [tab, setTab] = useState<Tab>("ready");
   const tabs: { id: Tab; label: string; count: number }[] = [
@@ -20,7 +28,7 @@ export function TestingQueuePanel({
     tab === "ready" ? testing.ready : tab === "under" ? testing.under : testing.failed;
 
   return (
-    <WidgetCard title="My testing queue" subtitle="Tickets in testing-related statuses">
+    <WidgetCard title={title} subtitle={subtitle}>
       <div className="flex gap-1 mb-4 p-1 rounded-lg border border-app-border bg-app-surface-muted w-fit">
         {tabs.map((t) => (
           <button
@@ -37,7 +45,7 @@ export function TestingQueuePanel({
           </button>
         ))}
       </div>
-      <IssueTable issues={issues} columns={["status", "updated"]} emptyMessage="No tickets in this queue" />
+      <IssueTable issues={issues} columns={tableColumns} emptyMessage="No tickets in this queue" />
     </WidgetCard>
   );
 }

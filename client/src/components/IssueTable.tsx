@@ -1,7 +1,7 @@
 import { JiraIssueLink } from "./JiraIssueLink";
 import type { IssueRow } from "../types";
 
-type Column = "status" | "type" | "priority" | "duedate" | "updated" | "project";
+type Column = "status" | "type" | "priority" | "duedate" | "updated" | "project" | "assignee";
 
 type IssueTableProps = {
   issues: IssueRow[];
@@ -28,6 +28,7 @@ export function IssueTable({
             <th className="px-3 py-2 text-left">Ticket</th>
             {cols.includes("status") && <th className="px-3 py-2 text-left">Status</th>}
             {cols.includes("type") && <th className="px-3 py-2 text-left">Type</th>}
+            {cols.includes("assignee") && <th className="px-3 py-2 text-left">Assignee</th>}
             {cols.includes("priority") && <th className="px-3 py-2 text-left">Priority</th>}
             {cols.includes("project") && <th className="px-3 py-2 text-left">Project</th>}
             {cols.includes("duedate") && <th className="px-3 py-2 text-left">Due</th>}
@@ -42,6 +43,7 @@ export function IssueTable({
               </td>
               {cols.includes("status") && <td className="px-3 py-2">{i.status}</td>}
               {cols.includes("type") && <td className="px-3 py-2">{i.issuetype}</td>}
+              {cols.includes("assignee") && <td className="px-3 py-2">{i.assignee}</td>}
               {cols.includes("priority") && <td className="px-3 py-2">{i.priority || "—"}</td>}
               {cols.includes("project") && <td className="px-3 py-2">{i.projectKey ?? "—"}</td>}
               {cols.includes("duedate") && <td className="px-3 py-2 text-app-text-muted text-xs">{i.duedate ?? "—"}</td>}

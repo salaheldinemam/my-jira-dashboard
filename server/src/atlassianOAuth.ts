@@ -1,5 +1,6 @@
 import axios from "axios";
 import crypto from "node:crypto";
+import { axiosOutboundConfig } from "./outboundHttps.js";
 
 export type AtlassianOAuthConfig = {
   clientId: string;
@@ -16,7 +17,10 @@ export function getAtlassianOAuthConfig(): AtlassianOAuthConfig | null {
   const clientSecret = process.env.ATLASSIAN_CLIENT_SECRET?.trim();
   const redirectUri = process.env.ATLASSIAN_REDIRECT_URI?.trim();
   if (!clientId || !clientSecret || !redirectUri) return null;
-  const scopes = (process.env.ATLASSIAN_SCOPES?.trim() || "read:jira-work read:jira-user offline_access").split(/\s+/);
+  const scopes = (
+    process.env.ATLASSIAN_SCOPES?.trim() ||
+    "read:jira-work read:jira-user read:board:jira-software read:sprint:jira-software offline_access"
+  ).split(/\s+/);
   return { clientId, clientSecret, redirectUri, scopes };
 }
 
@@ -62,7 +66,7 @@ export async function exchangeCodeForTokens(
       code,
       redirect_uri: config.redirectUri,
     },
-    { headers: { "Content-Type": "application/json" }, timeout: 30_000 }
+    { headers: { "Content-Type": "application/json" }, timeout: 30_000, ...axiosOutboundConfig() }
   );
   return data;
 }
@@ -79,7 +83,7 @@ export async function refreshAccessToken(
       client_secret: config.clientSecret,
       refresh_token: refreshToken,
     },
-    { headers: { "Content-Type": "application/json" }, timeout: 30_000 }
+    { headers: { "Content-Type": "application/json" }, timeout: 30_000, ...axiosOutboundConfig() }
   );
   return data;
 }
@@ -95,6 +99,7 @@ export async function getAccessibleResources(accessToken: string): Promise<Acces
   const { data } = await axios.get<AccessibleResource[]>(`${API_BASE}/oauth/token/accessible-resources`, {
     headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
     timeout: 30_000,
+    ...axiosOutboundConfig(),
   });
   return data;
 }

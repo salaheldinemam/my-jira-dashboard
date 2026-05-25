@@ -5,6 +5,7 @@ import {
   type AtlassianOAuthConfig,
 } from "./atlassianOAuth.js";
 import { createJiraClient, type JiraClientConfig } from "./jiraClient.js";
+import { isTlsCertificateError, TLS_HELP_MESSAGE } from "./outboundHttps.js";
 import { persistSession } from "./persistSession.js";
 import {
   getAccessToken,
@@ -54,7 +55,11 @@ export async function resolveJiraClientConfig(
         accessToken = await refreshOAuthTokens(session, sessionSecret, oauthConfig, refreshToken);
         sessionTouched = true;
       } catch (err) {
-        console.error("OAuth token refresh failed:", err);
+        if (isTlsCertificateError(err)) {
+          console.error(`OAuth token refresh failed: ${TLS_HELP_MESSAGE}`);
+        } else {
+          console.error("OAuth token refresh failed:", err);
+        }
         if (msUntilExpiry <= 0) return { config: null, sessionTouched: false };
       }
     }

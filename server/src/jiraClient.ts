@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
+import { axiosOutboundConfig } from "./outboundHttps.js";
 
 export type JiraClientConfig =
   | { mode: "basic"; baseUrl: string; email: string; apiToken: string }
@@ -22,6 +23,7 @@ export function createJiraClient(creds: JiraClientConfig | JiraCredentials): Axi
           "Content-Type": "application/json",
         },
         timeout: 60_000,
+        ...axiosOutboundConfig(),
       });
     }
     return createBasicJiraClient(creds.baseUrl, creds.email, creds.apiToken);
@@ -40,6 +42,7 @@ function createBasicJiraClient(baseUrl: string, email: string, apiToken: string)
       "Content-Type": "application/json",
     },
     timeout: 60_000,
+    ...axiosOutboundConfig(),
   });
 }
 

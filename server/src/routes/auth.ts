@@ -11,6 +11,7 @@ import {
 } from "../atlassianOAuth.js";
 import { createJiraClient, jiraGetMyself, pickAvatarUrl } from "../jiraClient.js";
 import { resolveJiraClientConfig } from "../jiraAuth.js";
+import { isTlsCertificateError, TLS_HELP_MESSAGE } from "../outboundHttps.js";
 import { persistSession } from "../persistSession.js";
 import { clearJiraSession, setJiraBasicSession, setJiraOAuthSession } from "../session.js";
 import type { StatusMapping } from "../statusMapping.js";
@@ -117,6 +118,11 @@ export function authRouter(sessionSecret: string) {
         res.redirect(`${clientOrigin()}/settings?connected=1`);
       });
     } catch (e: unknown) {
+      if (isTlsCertificateError(e)) {
+        console.error(`OAuth callback failed: ${TLS_HELP_MESSAGE}`);
+        res.redirect(`${clientOrigin()}/settings?error=tls_certificate`);
+        return;
+      }
       console.error("OAuth callback failed:", e);
       res.redirect(`${clientOrigin()}/settings?error=oauth_callback_failed`);
     }
@@ -149,6 +155,10 @@ export function authRouter(sessionSecret: string) {
         user: { displayName: me.displayName, accountId: me.accountId, email: me.emailAddress ?? email },
       });
     } catch (e: unknown) {
+      if (isTlsCertificateError(e)) {
+        res.status(502).json({ error: TLS_HELP_MESSAGE });
+        return;
+      }
       let msg = e && typeof e === "object" && "message" in e ? String((e as { message: unknown }).message) : "Jira connection failed";
       if (axios.isAxiosError(e)) {
         const status = e.response?.status;

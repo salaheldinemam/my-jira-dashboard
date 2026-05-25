@@ -26,6 +26,10 @@ const OAUTH_ERRORS: Record<string, string> = {
   invalid_oauth_state: "OAuth state mismatch. Please try signing in again.",
   no_accessible_sites: "No Jira sites were returned for your account.",
   oauth_callback_failed: "OAuth sign-in failed. Please try again.",
+  tls_certificate:
+    "TLS certificate verification failed (common on corporate networks). Add ATLASSIAN_INSECURE_TLS=true to your server .env for local dev, or set NODE_EXTRA_CA_CERTS to your organization root CA file. Restart npm run dev after changing .env.",
+  oauth_scope:
+    "Jira board/sprint access was denied. Sign out below, then sign in with Atlassian again to grant board and sprint permissions.",
   access_denied: "You declined access. Sign in again when ready.",
 };
 

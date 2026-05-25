@@ -34,6 +34,8 @@ MVP full-stack app for engineering managers: workload, time tracking, testing pi
 | GET    | `/api/dashboard/summary`    | Home metrics + optional hours in range                 |
 | GET    | `/api/time-tracking`        | Per-person hours and tasks (needs `from` / `to`)       |
 | GET    | `/api/workload/by-assignee` | Workload buckets per person                            |
+| GET    | `/api/sprints`              | Active/future sprints for `projects` (required)        |
+| GET    | `/api/sprint/dashboard`     | Sprint dashboard (`sprintId`, `projects` required)     |
 | GET    | `/api/testing`              | `view=underTesting` or `failedTesting`                 |
 | GET    | `/api/stories`              | Stories + enhancements, grouped                        |
 | POST   | `/api/jql`                  | Ad-hoc JQL search (advanced)                           |
@@ -82,7 +84,7 @@ Once deployed, open `https://<your-service>.onrender.com`, go to **Settings** in
 | Pagination / caps                     | Search capped with chunking; tune `maxCap` in `fetchAllIssues.ts` |
 
 
-Not in this MVP: OAuth, Slack alerts, Redis, PostgreSQL, sprint picker UI, label/component filters (easy to add via JQL builder).
+Not in this MVP: Slack alerts, Redis, PostgreSQL, label/component filters (easy to add via JQL builder). Sprint dashboard is available at `/sprint` with project + sprint filters.
 
 ## License
 
